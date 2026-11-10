@@ -41,7 +41,7 @@ put(12, 11, "L")
 put(13, 5, "H")
 put(16, 5, "S")
 
-lines = ["# Graveborne floor 1: The Oubliette", "NAME The Oubliette", "MAP"]
+lines = ["# Graveborne floor 1: The Oubliette", "NAME The Oubliette", "THEME dungeon", "STAIRS exit", "NEXT level2.txt", "MAP"]
 lines += ["".join(r) for r in g]
 lines += ["END",
           "START 8 14 N",

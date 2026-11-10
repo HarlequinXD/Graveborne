@@ -17,6 +17,7 @@ public final class Game {
     private final Atlas.Loader loader;
     private final ViewRenderer vr, vr2;
     private final Random rnd = new Random(1993);
+    public Audio audio = Audio.NONE;
 
     // ---- state
     public static final int TITLE = 0, PLAY = 1, DEAD = 2, WIN = 3;
@@ -82,18 +83,34 @@ public final class Game {
     }
 
     public void newGame() {
-        lv = Level.parse(loader.text("level1.txt"));
-        px = cpX = lv.startX; py = cpY = lv.startY; dir = cpDir = lv.startDir;
         party = Member.party();
         keys = 0; potions = 1; xp = 0; plevel = 1;
-        log.clear(); floaters.clear(); queue.clear();
-        anim = A_NONE; secretT = -1; switchPressed = false; hintsGiven = 0; idleHintT = 0; showMap = false;
-        for (int y = 0; y < lv.h; y++) for (int x = 0; x < lv.w; x++) if (lv.cell[y][x] == Level.SECRET) { secretX = x; secretY = y; }
+        log.clear();
+        loadLevel("level1.txt");
         say("YOU WAKE ON COLD STONE.", Pal.BONE);
         say("NO HEART BEATS IN YOUR CHESTS.", Pal.STONE7);
         say("THE CURSE HAS RAISED YOU AGAIN.", Pal.CURSE_L);
+    }
+
+    private String levelFile;
+
+    private void loadLevel(String file) {
+        levelFile = file;
+        lv = Level.parse(loader.text(file));
+        px = cpX = lv.startX; py = cpY = lv.startY; dir = cpDir = lv.startDir;
+        floaters.clear(); queue.clear();
+        anim = A_NONE; secretT = -1; switchPressed = false; hintsGiven = 0; idleHintT = 0; showMap = false;
+        secretX = secretY = -1;
+        for (int y = 0; y < lv.h; y++) for (int x = 0; x < lv.w; x++) if (lv.cell[y][x] == Level.SECRET) { secretX = x; secretY = y; }
+        if (secretX < 0) switchPressed = true;  // no hints outside the cell
         bannerT = 3.0f;
+        dist = null;
         markSeen();
+        if (state == PLAY) audio.music(lv.theme);
+    }
+
+    private String stepSound() {
+        return lv.theme.equals("forest") ? "step_grass" : lv.theme.equals("town") ? "step_cobble" : "step_stone";
     }
 
     private void say(String s, int c) {
@@ -155,8 +172,8 @@ public final class Game {
         Item it = lv.itemAt(px, py);
         if (it != null && it.pickable()) {
             lv.items.remove(it);
-            if (it.type.equals("key")) { keys++; say("YOU TAKE AN IRON KEY.", Pal.GOLD); }
-            else if (it.type.equals("potion")) { potions++; say("YOU TAKE A VIAL OF GRAVE BLOOD.", Pal.RED_L); }
+            if (it.type.equals("key")) { keys++; say("YOU TAKE AN IRON KEY.", Pal.GOLD); audio.sfx("key"); }
+            else if (it.type.equals("potion")) { potions++; say("YOU TAKE A VIAL OF GRAVE BLOOD.", Pal.RED_L); audio.sfx("pickup"); }
         }
     }
 
@@ -171,8 +188,9 @@ public final class Game {
                 int bedDir = bedFaceDir();
                 if (s < 3) {
                     lv.setDeco(secretX, secretY, bedDir, "bed" + (s + 1));
-                    if (s == 0) say("STONE GRINDS " + relWhere(secretX, secretY) + "...", Pal.STONE8);
+                    if (s == 0) { say("STONE GRINDS " + relWhere(secretX, secretY) + "...", Pal.STONE8); audio.sfx("grind"); }
                 } else {
+                    audio.sfx("thud");
                     lv.setDeco(secretX, secretY, bedDir, null);
                     lv.cell[secretY][secretX] = Level.FLOOR;
                     say("THE BED SLAB HAS SUNK. A PASSAGE YAWNS OPEN.", Pal.TEAL_L);
@@ -207,6 +225,7 @@ public final class Game {
                     lv.doorAnim[y][x] += dt / 0.55f;
                     if (lv.doorAnim[y][x] >= 1) {
                         lv.doorAnim[y][x] = 0;
+                        audio.sfx("thud_soft");
                         lv.cell[y][x] = Level.OPEN;
                         markSeen();
                     }
@@ -253,12 +272,14 @@ public final class Game {
         for (Monster m : lv.monsters) {
             if (!m.alive()) continue;
             m.idleT += dt;
+            if (m.npc()) continue;
             if (m.attackAnim > 0) m.attackAnim -= dt;
             if (m.hitFlash > 0) m.hitFlash -= dt;
             if (m.moveT < 1) m.moveT = Math.min(1, m.moveT + dt / 0.4f);
             int d = dist[m.y][m.x];
             if (!m.awake && d <= 6) {
                 m.awake = true;
+                audio.sfx("growl_" + m.type);
                 if (d <= 3) say("A " + m.label + " STIRS " + relWhere(m.x, m.y) + "!", Pal.RED_L);
             }
             if (!m.awake) continue;
@@ -268,6 +289,7 @@ public final class Game {
                 if (m.attackCd <= 0) {
                     m.attackCd = m.attackEvery * (0.85f + rnd.nextFloat() * 0.3f);
                     m.attackAnim = 0.4f;
+                    audio.sfx("atk_" + m.type);
                     monsterHits(m);
                 }
             } else {
@@ -278,6 +300,7 @@ public final class Game {
                     for (int k = 0; k < 4; k++) {
                         int nx = m.x + Level.DX[k], ny = m.y + Level.DY[k];
                         if (!lv.passable(nx, ny) || partyOn(nx, ny) || lv.monsterAt(nx, ny) != null) continue;
+                        if (lv.monsterAt(nx, ny) != null) continue;
                         if (dist[ny][nx] < bd) { bd = dist[ny][nx]; best = k; }
                     }
                     if (best >= 0) {
@@ -306,6 +329,7 @@ public final class Game {
         Member t = cand.get(rnd.nextInt(cand.size()));
         if (rnd.nextFloat() < 0.12f) {
             say("THE " + m.label + " MISSES " + t.name + ".", Pal.STONE6);
+            audio.sfx("whoosh");
             return;
         }
         int dmg = m.dmgMin + rnd.nextInt(m.dmgMax - m.dmgMin + 1);
@@ -315,16 +339,17 @@ public final class Game {
         String verb = m.type.equals("ghoul") ? "CLAWS" : m.type.equals("wraith") ? "CHILLS" : "CUTS";
         String where = from == dir ? "" : from == ((dir + 2) & 3) ? " FROM BEHIND" : relWhere(m.x, m.y).replace("TO YOUR", "FROM THE");
         say("THE " + m.label + " " + verb + " " + t.name + where + " (" + dmg + ")", Pal.RED_L);
+        audio.sfx(t.alive() ? "ouch" : "fall");
         if (!t.alive()) say(t.name + " FALLS!", Pal.RED);
         boolean any = false;
         for (Member p : party) any |= p.alive();
-        if (!any) { state = DEAD; stateT = 0; }
+        if (!any) { state = DEAD; stateT = 0; audio.music("death"); }
     }
 
     // =================================================================== input
     /** Tap in virtual screen coordinates. */
     public void tap(int x, int y) {
-        if (state == TITLE) { if (stateT > 0.4f) { state = PLAY; stateT = 0; } return; }
+        if (state == TITLE) { if (stateT > 0.4f) { state = PLAY; stateT = 0; audio.sfx("start"); audio.music(lv.theme); } return; }
         if (state == DEAD) { if (stateT > 1.2f) respawn(); return; }
         if (state == WIN) { if (stateT > 1.5f) { newGame(); state = TITLE; stateT = 0; } return; }
         // view: use what's in front
@@ -396,6 +421,7 @@ public final class Game {
     }
 
     private void turn(int s) {
+        audio.sfx("turn");
         fromDir = dir;
         dir = (dir + s + 4) & 3;
         anim = A_TURN; animT = 0; animSide = s;
@@ -404,17 +430,31 @@ public final class Game {
     private void step(int d, int kind) {
         int nx = px + Level.DX[d], ny = py + Level.DY[d];
         char c = lv.at(nx, ny);
-        if (c == Level.STAIRS && kind == A_FWD) { descend(); return; }
+        if (c == Level.STAIRS && kind == A_FWD && lv.next != null) { descend(); return; }
         if (!lv.passable(nx, ny) || lv.monsterAt(nx, ny) != null) {
             anim = A_BUMP; animT = 0; shake = Math.max(shake, 0.08f);
-            if (lv.monsterAt(nx, ny) != null) say("A " + lv.monsterAt(nx, ny).label + " BLOCKS THE WAY.", Pal.STONE7);
+            audio.sfx("bump");
+            Monster bm = lv.monsterAt(nx, ny);
+            if (bm != null) say((bm.npc() ? "THE " : "A ") + bm.label + " BLOCKS THE WAY.", Pal.STONE7);
             return;
         }
         toX = nx; toY = ny; anim = kind; animT = 0;
+        audio.sfx(stepSound());
     }
 
     private void descend() {
-        state = WIN; stateT = 0;
+        if (lv.next == null) return;
+        audio.sfx(lv.theme.equals("dungeon") ? "stairs" : "gate");
+        String from = lv.name;
+        loadLevel(lv.next);
+        audio.music(lv.theme);
+        if (lv.theme.equals("forest")) {
+            say("YOU CLIMB INTO MOONLIGHT.", Pal.TEAL_L);
+            say("THE PRISON LOOMS BEHIND YOU. AHEAD, THE ASHEN WOOD.", Pal.STONE7);
+        } else if (lv.theme.equals("town")) {
+            say("THE GATE GROANS SHUT BEHIND YOU.", Pal.STONE7);
+            say("LANTERNS. SMOKE. THE LIVING. HOLLOWMERE.", Pal.GOLD);
+        } else say("YOU LEAVE " + from.toUpperCase() + ".", Pal.STONE7);
     }
 
     private void use() {
@@ -425,6 +465,7 @@ public final class Game {
         if ("switch".equals(deco)) {
             lv.setDeco(fx, fy, face, "switch_on");
             switchPressed = true;
+            audio.sfx("click");
             shake = 0.12f;
             say("CLICK. THE LOOSE BRICK SINKS INTO THE WALL.", Pal.BONE);
             if (secretX >= 0) secretT = 0;
@@ -433,7 +474,7 @@ public final class Game {
         if ("switch_on".equals(deco)) { say("THE BRICK WILL NOT MOVE AGAIN.", Pal.STONE7); return; }
         switch (c) {
             case Level.DOOR:
-                if (lv.doorAnim[fy][fx] <= 0) { lv.doorAnim[fy][fx] = 0.001f; say("THE DOOR GROANS UPWARD.", Pal.STONE8); }
+                if (lv.doorAnim[fy][fx] <= 0) { lv.doorAnim[fy][fx] = 0.001f; say("THE DOOR GROANS UPWARD.", Pal.STONE8); audio.sfx("door"); }
                 return;
             case Level.LOCKED:
                 if (keys > 0) {
@@ -441,16 +482,37 @@ public final class Game {
                     lv.cell[fy][fx] = Level.DOOR;
                     lv.doorAnim[fy][fx] = 0.001f;
                     say("THE IRON KEY TURNS. THE LOCK GIVES.", Pal.GOLD);
-                } else say("LOCKED. YOU NEED A KEY.", Pal.STONE7);
+                    audio.sfx("unlock"); audio.sfx("door");
+                } else { say("LOCKED. YOU NEED A KEY.", Pal.STONE7); audio.sfx("locked"); }
                 return;
-            case Level.BARS: say("THE CELL DOOR IS LOCKED FROM OUTSIDE.", Pal.STONE7); return;
+            case Level.BARS: say("THE CELL DOOR IS LOCKED FROM OUTSIDE.", Pal.STONE7); audio.sfx("bars"); return;
             case Level.SECRET: say("A STONE SLAB BED, BUILT INTO THE WALL.", Pal.STONE7); return;
             case Level.SHRINE: shrine(); return;
-            case Level.STAIRS: descend(); return;
+            case Level.STAIRS:
+                if (lv.next != null) descend();
+                else say("THE CHAPEL IS BARRED. NOT YET.", Pal.STONE7);
+                return;
             default: break;
         }
         Monster m = lv.monsterAt(fx, fy);
+        if (m != null && m.npc()) { talk(m); return; }
         if (m != null) { say("TAP A WARRIOR'S WEAPON TO STRIKE.", Pal.STONE7); return; }
+        Item prop = lv.propAt(fx, fy);
+        if (prop != null) {
+            if (prop.type.equals("well")) say("BLACK WATER, FAR BELOW. SOMETHING BREATHES DOWN THERE.", Pal.STONE7);
+            else if (prop.type.equals("grave")) say("THE NAME IS WORN AWAY. THE EARTH IS FRESHLY TURNED.", Pal.STONE7);
+            else say("THE LAMP BURNS STEADY.", Pal.FLAME);
+            return;
+        }
+        if (lv.outdoor() && lv.solid(fx, fy)) {
+            String k = lv.faceKind(fx, fy, face);
+            if (k.startsWith("tree")) say("THE TREES ARE GREY WITH ASH.", Pal.STONE6);
+            else if (k.startsWith("house")) say("SHUTTERED TIGHT. SOMEONE INSIDE IS PRAYING.", Pal.STONE7);
+            else if (k.equals("towngate")) say("THE GATE IS BARRED FOR THE NIGHT.", Pal.STONE7);
+            else if (k.equals("pdoor")) say("YOU WILL NOT GO BACK DOWN THERE.", Pal.STONE7);
+            else say("ROUGH, COLD STONE.", Pal.STONE6);
+            return;
+        }
         if (deco != null && deco.equals("chains")) { say("RUSTED SHACKLES. STILL WARM.", Pal.STONE7); return; }
         if (deco != null && deco.equals("sigil")) { say("THE CURSE SIGIL PULSES LIKE A HEART.", Pal.CURSE_L); return; }
         if (deco != null && deco.equals("sconce")) { say("THE TORCH BURNS WITHOUT HEAT.", Pal.FLAME); return; }
@@ -460,8 +522,17 @@ public final class Game {
     private void shrine() {
         for (Member m : party) { if (!m.alive()) say(m.name + " RISES AGAIN.", Pal.TEAL_L); m.hp = m.maxHp; }
         cpX = px; cpY = py; cpDir = dir;
-        say("THE GRAVE SHRINE MENDS YOUR FLESH.", Pal.TEAL_L);
-        floaters.add(new Floater("MENDED", Pal.TEAL_L, 64, 70));
+        boolean inn = lv.shrineKind.equals("inn");
+        say(inn ? "YOU REST AT THE INN UNTIL DAWN THAT NEVER COMES." : "THE GRAVE SHRINE MENDS YOUR FLESH.", Pal.TEAL_L);
+        floaters.add(new Floater(inn ? "RESTED" : "MENDED", Pal.TEAL_L, 64, 70));
+        audio.sfx(inn ? "rest" : "shrine");
+    }
+
+    private void talk(Monster m) {
+        audio.sfx("talk");
+        String line = m.lines[m.lineIdx % m.lines.length];
+        m.lineIdx++;
+        say(m.label + ": " + line, m.type.equals("priest") ? Pal.CURSE_L : Pal.PARCH);
     }
 
     private void drink() {
@@ -470,6 +541,7 @@ public final class Game {
         for (Member m : party) if (m.alive() && m.hp < m.maxHp && (best == null || m.hp * best.maxHp < best.hp * m.maxHp)) best = m;
         if (best == null) { say("NO ONE NEEDS TO DRINK.", Pal.STONE7); return; }
         potions--;
+        audio.sfx("drink");
         int heal = Math.min(best.maxHp - best.hp, 22);
         best.hp += heal;
         say(best.name + " DRINKS GRAVE BLOOD (+" + heal + ")", Pal.RED_L);
@@ -478,6 +550,10 @@ public final class Game {
     private void attack(int i) {
         Member a = party[i];
         if (!a.alive() || a.cd > 0) return;
+        {
+            Monster ahead = lv.monsterAt(px + Level.DX[dir], py + Level.DY[dir]);
+            if (ahead != null && ahead.npc()) { say("YOU WILL NOT HARM THE LIVING.", Pal.STONE7); return; }
+        }
         Monster target = null;
         int range = a.reach == Member.RANGED ? 4 : 1;
         boolean frontRow = i < 2 || (!party[0].alive() && !party[1].alive());
@@ -486,10 +562,12 @@ public final class Game {
         for (int k = 1; k <= range; k++) {
             x += Level.DX[dir]; y += Level.DY[dir];
             Monster m = lv.monsterAt(x, y);
+            if (m != null && m.npc()) break;
             if (m != null && m.moveT > 0.5f) { target = m; break; }
             if (!lv.passable(x, y)) break;
         }
         a.swing = 0.25f;
+        audio.sfx(a.weapon.equals("xbow") ? "xbow" : "swing");
         if (target == null) {
             a.cd = 0.5f;
             floaters.add(new Floater(range == 0 ? "CAN'T REACH" : "NO TARGET", Pal.STONE6, 64, 60));
@@ -499,12 +577,15 @@ public final class Game {
         target.awake = true;
         if (rnd.nextFloat() < 0.1f + target.evade) {
             floaters.add(new Floater("MISS", Pal.STONE7, 64 + rnd.nextInt(16) - 8, 50));
+            audio.sfx("whoosh");
             return;
         }
+        audio.sfx("hit_" + a.weapon);
         int dmg = a.dmgMin + rnd.nextInt(a.dmgMax - a.dmgMin + 1) + (plevel - 1);
         target.hp -= dmg;
         target.hitFlash = 0.14f;
         floaters.add(new Floater("" + dmg, Pal.FLAME, 64 + rnd.nextInt(20) - 10, 46));
+        audio.sfx(target.alive() ? "hurt_" + target.type : "die_" + target.type);
         if (!target.alive()) {
             say(a.name + " DESTROYS THE " + target.label + ".", Pal.GOLD);
             xp += target.xp;
@@ -513,6 +594,7 @@ public final class Game {
                 plevel++;
                 for (Member m : party) { m.maxHp += 6; if (m.alive()) m.hp = Math.min(m.maxHp, m.hp + 12); }
                 say("THE CURSE FEEDS YOU. LEVEL " + plevel + "!", Pal.CURSE_L);
+                audio.sfx("levelup");
             }
         }
     }
@@ -523,6 +605,8 @@ public final class Game {
         anim = A_NONE; queue.clear();
         for (Monster m : lv.monsters) { m.awake = false; m.moveT = 1; m.fromX = m.x; m.fromY = m.y; }
         state = PLAY; stateT = 0;
+        audio.music(lv.theme);
+        audio.sfx("rise");
         say("THE CURSE WILL NOT LET YOU REST.", Pal.CURSE_L);
     }
 
@@ -540,7 +624,7 @@ public final class Game {
     // =================================================================== render
     public void render() {
         drawBackground();
-        if (state == TITLE) { drawTitle(); return; }
+        if (state == TITLE) { audio.music("title"); drawTitle(); return; }
         drawView();
         drawSideColumns();
         drawLog();

@@ -24,9 +24,21 @@ way out of the Oubliette.
 You wake in a cell facing the barred door. Behind you one brick is loose; the stone bed
 slab is in the right-hand wall. Press the brick and the bed sinks away into a secret passage.
 
+## The journey so far
+1. **The Oubliette**: escape the cell through the secret passage, find the key, climb the stairs into moonlight.
+2. **The Ashen Wood**: the prison grounds, then winding forest paths, a grave clearing and a wayside shrine.
+3. **Hollowmere**: a lantern-lit town. Talk to the guard, the innkeeper and the priest, and rest at the inn.
+
+## Sound
+Everything is synthesised by `tools/audio`: scores for the title, dungeon, forest and town
+(seamless loops), a death lament, and about 50 effects (footsteps per ground, doors, the
+grinding wall, weapons, each monster's cries, pickups, shrines). Regenerate with
+`python3 tools/audio/compose.py app/src/main/assets/music` and
+`python3 tools/audio/sfx.py app/src/main/assets/sfx` (needs ffmpeg with libvorbis).
+
 ## Building
 * APK: GitHub Actions (`.github/workflows/android.yml`) builds `Graveborne-debug`.
 * Art: `python3 tools/art/build_all.py app/src/main/assets` (numpy + Pillow), about 1 minute.
-* Floor 1: `python3 tools/level1.py app/src/main/assets/level1.txt`.
+* Floor 1: `python3 tools/level1.py app/src/main/assets/level1.txt`; floors 2-3: `python3 tools/levels_out.py app/src/main/assets`.
 * Desktop screenshots: compile the core plus `tools/desktop/Harness.java` with `javac` and run a script
   (see the header of Harness.java).

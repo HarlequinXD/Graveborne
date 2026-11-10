@@ -29,6 +29,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     private volatile int heldAction = -1;
     private volatile float heldTime;
     private final Object lock = new Object();
+    private final AndroidAudio audio;
 
     public GameView(Context c) {
         super(c);
@@ -39,6 +40,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
         paint.setFilterBitmap(false);
         paint.setAntiAlias(false);
         paint.setDither(false);
+        audio = new AndroidAudio(c);
     }
 
     private final Atlas.Loader loader = new Atlas.Loader() {
@@ -80,6 +82,7 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
             int vh = hh / scale;
             if (game == null || game.H != Math.max(360, vh)) {
                 game = new Game(loader, vh);
+                game.audio = audio;
                 frame = Bitmap.createBitmap(Game.W, game.H, Bitmap.Config.ARGB_8888);
             }
             offX = (w - Game.W * scale) / 2;
@@ -94,12 +97,14 @@ public class GameView extends SurfaceView implements SurfaceHolder.Callback, Run
     public void surfaceDestroyed(SurfaceHolder h) { surfaceReady = false; }
 
     public void resume() {
+        audio.resume();
         running = true;
         thread = new Thread(this, "graveborne-loop");
         thread.start();
     }
 
     public void pause() {
+        audio.pause();
         running = false;
         try { if (thread != null) thread.join(500); } catch (InterruptedException ignored) { }
     }

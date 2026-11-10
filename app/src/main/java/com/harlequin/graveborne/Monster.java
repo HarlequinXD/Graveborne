@@ -12,12 +12,19 @@ public final class Monster {
     public float attackAnim, hitFlash, idleT;
     public boolean awake;
     public final String label;
+    public String[] lines;
+    public int lineIdx;
+    public boolean npc() { return lines != null; }
 
     public Monster(String type, int x, int y) {
         this.type = type; this.x = this.fromX = x; this.y = this.fromY = y;
         switch (type) {
             case "ghoul": maxHp = 24; dmgMin = 4; dmgMax = 8; moveEvery = 0.75f; attackEvery = 1.4f; xp = 14; label = "GHOUL"; break;
             case "wraith": maxHp = 30; dmgMin = 5; dmgMax = 9; moveEvery = 1.2f; attackEvery = 1.8f; xp = 20; evade = 0.25f; label = "WRAITH"; break;
+            case "hound": maxHp = 20; dmgMin = 4; dmgMax = 7; moveEvery = 0.55f; attackEvery = 1.1f; xp = 14; evade = 0.1f; label = "CURSE HOUND"; break;
+            case "priest": maxHp = 99; label = "PRIEST"; break;
+            case "guard": maxHp = 99; label = "GUARD"; break;
+            case "innkeeper": maxHp = 99; label = "INNKEEPER"; break;
             default: maxHp = 18; dmgMin = 3; dmgMax = 6; moveEvery = 1.0f; attackEvery = 1.6f; xp = 10; label = "SKELETON"; break;
         }
         hp = maxHp;
@@ -32,7 +39,7 @@ public final class Monster {
     public float wy() { return fromY + (y - fromY) * moveT; }
 
     public String frame() {
-        if (attackAnim > 0) return "attack";
+        if (attackAnim > 0 && !npc()) return "attack";
         return ((int) (idleT * 1.6f) & 1) == 0 ? "idle" : "idle2";
     }
 }

@@ -1,0 +1,36 @@
+# Graveborne floor 3: the town of Hollowmere
+NAME Hollowmere
+THEME town
+WALL # house house2 house house2
+WALL C chapel
+WALL F palisade
+WALL G towngate
+SHRINE inn
+STAIRS chapel
+MAP
+FFFFFFFFFFFFFFFFF
+F###############F
+F#.............#F
+F#.#####C#####.#F
+F#.##.......##.#F
+F#.##.......##.#F
+F#.............#F
+F#.##.......##.#F
+F#.##.......##.#F
+F#.#####.##H##.#F
+F#....##.##....#F
+F#######.#######F
+F#######.#######F
+F#######.#######F
+F#######.#######F
+F#######.#######F
+FFFFFFFFGFFFFFFFF
+END
+START 8 15 N
+NPC 8 13 guard HALT! THOSE EYES... YOU CAME FROM THE OUBLIETTE?|THE CURSE RAISED YOU TOO. THEN YOU'RE NO DIFFERENT FROM US.|SEE THE PRIEST BY THE CHAPEL. SHE KNOWS WHAT DIGS BENEATH HOLLOWMERE.
+NPC 10 8 innkeeper DEAD OR NOT, COIN IS COIN. BUT TONIGHT REST IS FREE.|TAP THE INN DOOR BESIDE ME TO REST. THE CURSE CANNOT FOLLOW YOU INSIDE.
+NPC 9 4 priest FOUR WHO SHOULD BE DUST. THE CURSE CHOSE WELL.|IT BLEEDS UP FROM THE BARROWS BELOW MY CHAPEL, A WOUND THAT NEVER CLOSES.|REST, RISEN ONES. WHEN THE CRYPT DOOR OPENS, YOU MUST GO DOWN.
+PROP 8 6 well
+PROP 5 4 lamppost
+PROP 11 4 lamppost
+PROP 5 8 lamppost

@@ -4,8 +4,9 @@ package com.harlequin.graveborne;
 public final class Item {
     public final String type;
     public final int x, y;
+    public boolean prop;
 
     public Item(String type, int x, int y) { this.type = type; this.x = x; this.y = y; }
 
-    public boolean pickable() { return !type.equals("bones"); }
+    public boolean pickable() { return !prop && !type.equals("bones"); }
 }

@@ -15,6 +15,9 @@ public final class Level {
             SECRET = 'X', STAIRS = 'S', SHRINE = 'H', OPEN = 'O';
 
     public String name = "";
+    public String theme = "dungeon";
+    public String stairsKind = "stairs", shrineKind = "shrine", next = null;
+    public final HashMap<Character, String[]> wallKinds = new HashMap<>();
     public int w, h;
     public char[][] cell;
     /** door opening progress 0..1 per cell (only used while opening). */
@@ -43,6 +46,28 @@ public final class Level {
             switch (p[0]) {
                 case "NAME": lv.name = line.substring(5).trim(); break;
                 case "MAP": inMap = true; break;
+                case "THEME": lv.theme = p[1]; break;
+                case "STAIRS": lv.stairsKind = p[1]; break;
+                case "SHRINE": lv.shrineKind = p[1]; break;
+                case "NEXT": lv.next = p[1]; break;
+                case "WALL": {
+                    String[] k = new String[p.length - 2];
+                    System.arraycopy(p, 2, k, 0, k.length);
+                    lv.wallKinds.put(p[1].charAt(0), k);
+                    break;
+                }
+                case "PROP": {
+                    Item it = new Item(p[3], Integer.parseInt(p[1]), Integer.parseInt(p[2]));
+                    it.prop = true;
+                    lv.items.add(it);
+                    break;
+                }
+                case "NPC": {
+                    Monster m = new Monster(p[3], Integer.parseInt(p[1]), Integer.parseInt(p[2]));
+                    m.lines = line.split("\\s+", 5)[4].split("\\|");
+                    lv.monsters.add(m);
+                    break;
+                }
                 case "START":
                     lv.startX = Integer.parseInt(p[1]); lv.startY = Integer.parseInt(p[2]);
                     lv.startDir = DIRS.indexOf(p[3].charAt(0));
@@ -82,13 +107,20 @@ public final class Level {
 
     public boolean passable(int x, int y) {
         char c = at(x, y);
+        if (c != FLOOR && c != OPEN) return false;
+        for (Item it : items) if (it.prop && it.x == x && it.y == y) return false;
+        return true;
+    }
+
+    /** Is the grid cell open ground (props stand on open ground but block walking)? */
+    public boolean open(int x, int y) {
+        char c = at(x, y);
         return c == FLOOR || c == OPEN;
     }
 
     /** Solid blocks are drawn as cubes (walls, closed doors, bars...). */
     public boolean solid(int x, int y) {
-        char c = at(x, y);
-        return c != FLOOR && c != OPEN;
+        return !open(x, y);
     }
 
     public String deco(int x, int y, int dir) { return deco.get((y * w + x) * 4 + dir); }
@@ -101,27 +133,45 @@ public final class Level {
     /** Doors, bars and stairs show their face only along the axis where they have open neighbours. */
     public boolean faceOnAxis(int x, int y, int dir) {
         int nx = x + DX[dir], ny = y + DY[dir];
-        return passable(nx, ny);
+        return open(nx, ny);
+    }
+
+    public boolean outdoor() { return !theme.equals("dungeon"); }
+
+    /** Plain wall kind for a cell character, varied per face so forests and streets don't repeat. */
+    public String wallKind(char c, int x, int y, int dir) {
+        String[] k = wallKinds.get(c);
+        if (k == null) k = wallKinds.get('#');
+        if (k == null || k.length == 0) return "wall";
+        int hsh = (x * 73856093) ^ (y * 19349663) ^ (dir * 83492791);
+        hsh ^= hsh >>> 13;
+        return k[Math.floorMod(hsh, k.length)];
     }
 
     /** Texture kind for one face of a solid cell, or null if nothing to draw. */
     public String faceKind(int x, int y, int dir) {
         char c = at(x, y);
         String d = deco(x, y, dir);
+        String plain = d != null ? d : wallKind(c, x, y, dir);
         switch (c) {
             case DOOR: {
-                if (!faceOnAxis(x, y, dir)) return "wall";
+                if (!faceOnAxis(x, y, dir)) return plain;
                 float a = doorAnim[y][x];
                 if (a <= 0) return "door";
                 int st = Math.min(3, 1 + (int) (a * 3));
                 return "door" + st;
             }
-            case LOCKED: return faceOnAxis(x, y, dir) ? "locked" : "wall";
-            case BARS: return faceOnAxis(x, y, dir) ? "bars" : "wall";
-            case STAIRS: return faceOnAxis(x, y, dir) ? "stairs" : "wall";
-            case SHRINE: return faceOnAxis(x, y, dir) ? "shrine" : "wall";
-            default: return d != null ? d : "wall";
+            case LOCKED: return faceOnAxis(x, y, dir) ? "locked" : plain;
+            case BARS: return faceOnAxis(x, y, dir) ? "bars" : plain;
+            case STAIRS: return faceOnAxis(x, y, dir) ? stairsKind : plain;
+            case SHRINE: return faceOnAxis(x, y, dir) ? shrineKind : plain;
+            default: return plain;
         }
+    }
+
+    public Item propAt(int x, int y) {
+        for (Item it : items) if (it.prop && it.x == x && it.y == y) return it;
+        return null;
     }
 
     public Monster monsterAt(int x, int y) {
@@ -130,7 +180,7 @@ public final class Level {
     }
 
     public Item itemAt(int x, int y) {
-        for (Item it : items) if (it.x == x && it.y == y) return it;
+        for (Item it : items) if (!it.prop && it.x == x && it.y == y) return it;
         return null;
     }
 }

@@ -10,6 +10,7 @@ public final class ViewRenderer {
     public static final int V = 128;
     private static final int MAX_DZ = 5, MAX_DX = 4;
     private final Atlas atlas;
+    private String suffix = "";
     public final Gfx out = new Gfx(V, V);
 
     public ViewRenderer(Atlas atlas) { this.atlas = atlas; }
@@ -19,7 +20,7 @@ public final class ViewRenderer {
         Atlas.Sprite s = atlas.get(key);
         if (s == null && !kind.equals("wall")) {
             // special pieces only exist close up; far away they read as plain wall
-            String base = kind.startsWith("door") ? "door" : (kind.startsWith("bed") || kind.startsWith("switch")) ? "wall" : "wall";
+            String base = kind.startsWith("door") ? "door" : "wall";
             s = atlas.get("f:" + base + (side ? ":S:" : ":F:") + x4 + ":" + zq);
         }
         return s;
@@ -31,8 +32,10 @@ public final class ViewRenderer {
      */
     public void render(Level lv, int px, int py, int dir, int sx, int sz, float time) {
         Gfx g = out;
-        Atlas.Sprite bg = atlas.get("bg:" + sx + ":" + sz);
-        if (bg == null) bg = atlas.get("bg:0:0");
+        String th = lv.outdoor() ? lv.theme + dir : lv.theme;
+        Atlas.Sprite bg = atlas.get("bg:" + th + ":" + sx + ":" + sz);
+        if (bg == null) bg = atlas.get("bg:" + th + ":0:0");
+        suffix = lv.outdoor() ? ":o" : "";
         g.blit(bg, 0, 0);
         int fx = Level.DX[dir], fy = Level.DY[dir];
         int rdir = (dir + 1) & 3;
@@ -74,10 +77,11 @@ public final class ViewRenderer {
     }
 
     private void drawContents(Level lv, int cx, int cy, int px, int py, int fx, int fy, int rx, int ry, int sx, int sz, float time) {
-        Item it = lv.itemAt(cx, cy);
-        if (it != null) {
+        for (Item it : lv.items) {
+            if (it.x != cx || it.y != cy) continue;
             float relx = cx - px, rely = cy - py;
-            billboard("i:" + it.type + ":", relx * fx + rely * fy - sz / 4f, relx * rx + rely * ry - sx / 4f, 1, 0);
+            String pre = it.prop ? "o:" + it.type + ":" : "i:" + it.type + ":";
+            billboard(pre, it.prop ? "" : suffix, relx * fx + rely * fy - sz / 4f, relx * rx + rely * ry - sx / 4f, 1, 0);
         }
         for (Monster m : lv.monsters) {
             if (!m.alive()) continue;
@@ -86,14 +90,15 @@ public final class ViewRenderer {
             float relx = wx - px, rely = wy - py;
             float dzf = relx * fx + rely * fy - sz / 4f;
             float dxf = relx * rx + rely * ry - sx / 4f;
-            billboard("m:" + m.type + ":" + m.frame() + ":", dzf, dxf, 2, m.hitFlash > 0 ? 1 : 0);
+            billboard("m:" + m.type + ":" + m.frame() + ":", suffix, dzf, dxf, 2, m.hitFlash > 0 ? 1 : 0);
         }
     }
 
-    private void billboard(String prefix, float dz, float dx, int minZq, int mode) {
+    private void billboard(String prefix, String suf, float dz, float dx, int minZq, int mode) {
         int zq = Math.round(dz * 4);
         if (zq < minZq) return;
-        Atlas.Sprite s = atlas.get(prefix + zq);
+        Atlas.Sprite s = atlas.get(prefix + zq + suf);
+        if (s == null) s = atlas.get(prefix + zq);
         if (s == null) return;
         float d = (zq + 1.2f) / 4f;
         int ax = Math.round(64 + dx * 64f / d);

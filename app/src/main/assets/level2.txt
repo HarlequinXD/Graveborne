@@ -1,0 +1,53 @@
+# Graveborne floor 2: prison grounds and the Ashen Wood
+NAME The Ashen Wood
+THEME forest
+WALL # tree tree tree2 tree tree3
+WALL P prison prison prisonwin
+WALL Q pdoor
+WALL F palisade
+STAIRS towngate
+SHRINE shrine
+NEXT level3.txt
+MAP
+PPPPPPPPPPPPPPP###########
+PPPPPPPPPPPPPPP###########
+PPPPPPPPPPPPPPP###########
+PPPPPPPQPPPPPPP###########
+#P...........P############
+#P...........P############
+#P...........P############
+#P...........P############
+#P...........P############
+#PPPPPP.PPPPPP############
+#######.##################
+#######.##################
+#######.##################
+###.........#H############
+###.######......##########
+###.######......##########
+###.######...........#####
+###.######......####.#####
+###.######......####.#####
+####################.#####
+####################.#####
+#################....#####
+#################.########
+#################......###
+##############FFFFFFFFSFFF
+##########################
+##########################
+END
+START 7 4 S
+MON 7 12 hound
+MON 4 17 hound
+MON 13 17 wraith
+MON 18 16 skeleton
+MON 20 19 hound
+MON 19 21 skeleton
+PROP 10 14 grave
+PROP 15 14 grave
+PROP 10 18 grave
+PROP 12 18 grave
+ITEM 3 18 potion
+ITEM 15 18 potion
+ITEM 5 13 bones

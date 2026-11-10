@@ -1,5 +1,8 @@
 # Graveborne floor 1: The Oubliette
 NAME The Oubliette
+THEME dungeon
+STAIRS exit
+NEXT level2.txt
 MAP
 ##################
 ########....######

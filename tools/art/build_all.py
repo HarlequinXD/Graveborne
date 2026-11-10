@@ -20,7 +20,9 @@ from pixelart import paint_texture, light_indices, finish, NCOL
 
 CAM = 1.2  # camera stands 0.3 cell behind the centre -> +1.2 quarter units
 
-WALLISH = ["wall", "chains", "sconce", "sigil", "door", "locked", "arch", "stairs", "shrine", "bars"]
+WALLISH = ["wall", "chains", "sconce", "sigil", "door", "locked", "arch", "stairs", "shrine", "bars", "exit"]
+OUTDOOR = ["tree", "tree2", "tree3", "prison", "prisonwin", "pdoor", "palisade", "towngate", "house", "house2", "inn", "chapel"]
+OUT_MONSTERS = ["skeleton", "wraith", "ghoul", "hound", "priest", "guard", "innkeeper"]
 NEAR_ONLY = ["switch", "switch_on", "bed", "bed1", "bed2", "bed3", "door1", "door2", "door3"]
 
 
@@ -57,8 +59,8 @@ def crop(rgba):
 
 
 def job_face(args):
-    kind, side, X4, Zq = args
-    s = face_sprite(kind, side, X4, Zq + CAM)
+    kind, side, X4, Zq, light = args
+    s = face_sprite(kind, side, X4, Zq + CAM, light)
     if s is None:
         return None
     c = crop(s)
@@ -69,9 +71,10 @@ def job_face(args):
 
 
 def job_backdrop(args):
-    fx4, fz4 = args
-    s = backdrop_sprite(fx4 / 4.0, fz4 / 4.0)
-    return (f"bg:{fx4}:{fz4}", s, 0, 0)
+    theme, fx4, fz4, facing = args
+    s = backdrop_sprite(fx4 / 4.0, fz4 / 4.0, theme, facing)
+    key = f"bg:{theme}:{fx4}:{fz4}" if theme == "dungeon" else f"bg:{theme}{facing}:{fx4}:{fz4}"
+    return (key, s, 0, 0)
 
 
 # ---------------------------------------------------------------- billboards
@@ -82,13 +85,18 @@ def _bb_tex(group, name, frame):
     key = (group, name, frame)
     if key not in _bb_cache:
         import actors
-        c = actors.MONSTERS[name](frame) if group == "m" else actors.ITEMS[name]()
+        if group == "m":
+            c = actors.MONSTERS[name](frame)
+        elif group == "o":
+            c = actors.PROPS[name][0]()
+        else:
+            c = actors.ITEMS[name]()
         idx, glow = paint_texture(c.rgb, c.emi)
         _bb_cache[key] = (idx, glow, c.a, c.w, c.h)
     return _bb_cache[key]
 
 
-def billboard(group, name, frame, Zq, world_w, world_h, lift=0.0):
+def billboard(group, name, frame, Zq, world_w, world_h, lift=0.0, light="dungeon"):
     """Upright card at the cell centre, feet on the floor (+lift)."""
     idx_t, glow_t, a_t, tw, th = _bb_tex(group, name, frame)
     d = (Zq + CAM) / 4.0
@@ -113,7 +121,7 @@ def billboard(group, name, frame, Zq, world_w, world_h, lift=0.0):
     mask = flat_w.mean(-1) >= 0.5
     if not mask.any():
         return None
-    steps = torch_steps(np.full((128, 128), d)) + 0.25
+    steps = view.LIGHT[light](np.full((128, 128), d)) + 0.25
     steps = np.maximum(steps, steps * (1 - np.clip(glow, 0, 1)) + glow * 2.4)
     lit = light_indices(idx, steps)
     rgba, li = finish(lit, mask)
@@ -127,13 +135,19 @@ def billboard(group, name, frame, Zq, world_w, world_h, lift=0.0):
 
 
 def job_bb(args):
-    group, name, frame, Zq = args
+    group, name, frame, Zq, light = args
+    suf = ":o" if light == "out" else ""
     if group == "m":
-        r = billboard(group, name, frame, Zq, 0.75, 1.0, lift=0.0 if name != "wraith" else 0.04)
-        key = f"m:{name}:{frame}:{Zq}"
+        r = billboard(group, name, frame, Zq, 0.75, 1.0, lift=0.0 if name != "wraith" else 0.04, light=light)
+        key = f"m:{name}:{frame}:{Zq}{suf}"
+    elif group == "o":
+        import actors
+        _, ww, wh = actors.PROPS[name]
+        r = billboard(group, name, None, Zq, ww, wh, light=light)
+        key = f"o:{name}:{Zq}"
     else:
-        r = billboard(group, name, frame, Zq, 0.5, 0.25)
-        key = f"i:{name}:{Zq}"
+        r = billboard(group, name, frame, Zq, 0.5, 0.25, light=light)
+        key = f"i:{name}:{Zq}{suf}"
     if r is None:
         return None
     img, ox, oy = r
@@ -172,27 +186,38 @@ def main():
     out = sys.argv[1]
     os.makedirs(out, exist_ok=True)
     jobs = []
-    for kind in WALLISH:
-        for (X4, Zq) in view_keys(4, 5):
-            for side in (False, True):
-                if visible(side, X4, Zq):
-                    jobs.append((kind, side, X4, Zq))
+    for kinds, light in ((WALLISH, "dungeon"), (OUTDOOR, "out")):
+        for kind in kinds:
+            for (X4, Zq) in view_keys(4, 5):
+                for side in (False, True):
+                    if visible(side, X4, Zq):
+                        jobs.append((kind, side, X4, Zq, light))
     for kind in NEAR_ONLY:
         for (X4, Zq) in view_keys(1, 2):
             for side in (False, True):
                 if visible(side, X4, Zq):
-                    jobs.append((kind, side, X4, Zq))
+                    jobs.append((kind, side, X4, Zq, "dungeon"))
     print("faces:", len(jobs), flush=True)
     bb = []
     import actors
     for name in actors.MONSTERS:
-        for fr in actors.FRAMES:
-            for Zq in range(2, 22):
-                bb.append(("m", name, fr, Zq))
+        npc = name in ("priest", "guard", "innkeeper")
+        lights = (["dungeon"] if name in ("skeleton", "wraith", "ghoul") else []) + (["out"] if name in OUT_MONSTERS else [])
+        for light in lights:
+            for fr in actors.FRAMES:
+                if npc and fr == "attack":
+                    continue
+                for Zq in range(2, 22):
+                    bb.append(("m", name, fr, Zq, light))
     for name in actors.ITEMS:
+        for light in ("dungeon", "out"):
+            for Zq in range(1, 22):
+                bb.append(("i", name, None, Zq, light))
+    for name in actors.PROPS:
         for Zq in range(1, 22):
-            bb.append(("i", name, None, Zq))
-    bgs = [(0, fz) for fz in range(4)] + [(-2, 0), (2, 0)]
+            bb.append(("o", name, None, Zq, "out"))
+    bgs = [(th, sx, sz, f) for th in ("dungeon", "forest", "town") for f in (range(1) if th == "dungeon" else range(4))
+           for (sx, sz) in [(0, 0), (0, 1), (0, 2), (0, 3), (-2, 0), (2, 0)]]
     with Pool(int(os.environ.get("JOBS", "2"))) as pool:
         res = [r for r in pool.imap_unordered(job_face, jobs, chunksize=8) if r is not None]
         print("faces kept:", len(res), flush=True)

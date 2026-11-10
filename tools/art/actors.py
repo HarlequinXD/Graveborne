@@ -217,3 +217,159 @@ def item_bones():
 MONSTERS = {"skeleton": skeleton, "ghoul": ghoul, "wraith": wraith}
 FRAMES = ["idle", "idle2", "attack"]
 ITEMS = {"key": item_key, "potion": item_potion, "bones": item_bones}
+
+
+# --------------------------------------------------------------- curse hound
+def hound(frame="idle"):
+    c = Canvas(MW, MH)
+    fur, fur_d = "41384d", "221b2c"
+    atk = frame == "attack"
+    bob = 1 if frame == "idle2" else 0
+    by = 92 + bob - (8 if atk else 0)
+    # legs
+    for (lx, ly) in ((30, by + 6), (40, by + 8), (60, by + 6), (68, by + 8)):
+        c.capsule(lx, ly, lx + (2 if atk else 0), 124, 3.4, fur_d, 2.6)
+        c.ellipse(lx + 1, 124, 4, 2, "17121f")
+    # body (front-facing three-quarter: chest toward us)
+    body = c.ellipse(48, by, 26, 14, fur, amb=0.5, k=0.7)
+    hair = body & ((((c.xx * 0.8 + c.yy * 0.5) % 4) < 1.2))
+    c.rgb[hair] *= 0.65
+    # exposed ribs where the curse rotted the flesh
+    for i in range(3):
+        rib = body & (np.abs(c.xx - (56 + i * 5)) < 1.0) & (np.abs(c.yy - by) < 8)
+        c.rgb[rib] = np.array([216, 204, 177], np.float32)
+    c.ellipse(48, by - 10, 16, 10, fur, amb=0.5, k=0.7)   # shoulders / scruff
+    # head lowered toward the party
+    hy = by - 16 + (6 if atk else 0)
+    hd = c.ellipse(48, hy, 12, 10, fur, amb=0.5, k=0.7)
+    for s in (-1, 1):
+        c.poly([(48 + s * 6, hy - 6), (48 + s * 13, hy - 18), (48 + s * 11, hy - 3)], fur_d, amb=1.0)
+    c.ellipse(48, hy + 6, 7, 5 + (2 if atk else 0), "17121f", flat=True)   # muzzle
+    c.ellipse(48, hy + 3, 3, 2, "0b0a0e", flat=True)
+    if atk:
+        c.ellipse(48, hy + 8, 6, 4, "6e181b", flat=True)
+        for tx in (-4, -2, 2, 4):
+            c.line(48 + tx, hy + 5, 48 + tx, hy + 8, 1.0, "f0e6cc")
+    for s in (-1, 1):
+        c.ellipse(48 + s * 5, hy - 2, 2.4, 1.8, "e2b4f4", flat=True, emissive="ab6dd5")
+        c.glow(48 + s * 5, hy - 2, 4, "7a3eaa", 0.6)
+    # tail flicking up
+    c.capsule(74, by - 4, 86, by - 20 - (4 if bob else 0), 3, fur_d, 1.5)
+    return c
+
+
+# ------------------------------------------------------------------- townsfolk
+def _person(c, robe, trim, skin="c9a98c", hood=None, bob=0):
+    pts = [(48, 40 + bob), (64, 50 + bob), (70, 124), (26, 124), (32, 50 + bob)]
+    r = c.poly(pts, robe, amb=1.0, grad=(-0.6, -0.3, 0.7))
+    folds = r & ((((c.xx - 48) * 0.6 + c.yy * 0.1) % 7) < 1.2) & (c.yy > 70)
+    c.rgb[folds] *= 0.7
+    c.rect(28, 118, 68, 124, trim)
+    if hood:
+        c.ellipse(48, 30 + bob, 13, 14, hood, amb=0.5, k=0.7)
+    head = c.ellipse(48, 33 + bob, 8, 9, skin, amb=0.55, k=0.6)
+    for ex in (44.5, 51.5):
+        c.ellipse(ex, 32 + bob, 1.3, 1.3, "1a1611", flat=True)
+    c.line(45, 38 + bob, 51, 38 + bob, 1.0, "6e4a3a")
+    return r
+
+
+def priest(frame="idle"):
+    c = Canvas(MW, MH)
+    bob = 1 if frame == "idle2" else 0
+    _person(c, "2a1242", "be8041", hood="1e0d30", bob=bob)
+    for ex in (44.5, 51.5):
+        c.ellipse(ex, 33 + bob, 1.3, 1.3, "1a1611", flat=True)
+    # hands holding a lantern with spectral flame
+    c.ellipse(40, 72, 4, 3, "c9a98c"); c.ellipse(56, 72, 4, 3, "c9a98c")
+    c.line(48, 70, 48, 78, 1.0, "2d3849")
+    c.rect(43, 78, 54, 92, "2d3849")
+    c.rect(45, 80, 52, 90, "6dccb9", emissive="9fe2d3")
+    c.glow(48, 85, 12, "1d675d", 0.7)
+    # holy symbol
+    c.line(48, 48 + bob, 48, 58 + bob, 1.6, "e5bf82"); c.line(44, 52 + bob, 52, 52 + bob, 1.6, "e5bf82")
+    return c
+
+
+def guard(frame="idle"):
+    c = Canvas(MW, MH)
+    bob = 1 if frame == "idle2" else 0
+    _person(c, "6e181b", "2d3849", bob=bob)
+    # breastplate and helmet
+    c.ellipse(48, 58 + bob, 12, 9, "627286", amb=0.5, k=0.8)
+    hm = c.ellipse(48, 27 + bob, 11, 8, "77889a", amb=0.5, k=0.8)
+    c.rect(36, 30 + bob, 60, 32 + bob, "93a3b1")
+    for ex in (44.5, 51.5):
+        c.ellipse(ex, 34 + bob, 1.3, 1.3, "1a1611", flat=True)
+    # halberd
+    c.line(72, 124, 72, 14, 2.4, "522d17")
+    c.poly([(72, 14), (82, 22), (82, 34), (72, 30)], "93a3b1", amb=1.0, grad=(-0.6, -0.5, 0.5))
+    c.poly([(72, 6), (74, 14), (70, 14)], "b3c0ca", amb=1.0)
+    c.ellipse(70, 70, 4, 3, "c9a98c")
+    return c
+
+
+def innkeeper(frame="idle"):
+    c = Canvas(MW, MH)
+    bob = 1 if frame == "idle2" else 0
+    _person(c, "522d17", "381f11", skin="d8a888", bob=bob)
+    c.poly([(36, 60 + bob), (60, 60 + bob), (64, 118), (32, 118)], "d8ccb1", amb=1.0, grad=(-0.5, -0.4, 0.4))  # apron
+    c.ellipse(48, 22 + bob, 9, 5, "3a0d11", amb=0.6, k=0.6)   # cap
+    c.ellipse(48, 40 + bob, 7, 4, "786c54", amb=0.6, k=0.5)   # beard
+    for ex in (44.5, 51.5):
+        c.ellipse(ex, 32 + bob, 1.3, 1.3, "1a1611", flat=True)
+    # tankard
+    c.ellipse(60, 74, 4, 3, "d8a888")
+    c.rect(60, 66, 70, 80, "a26833"); c.rect(60, 64, 70, 68, "f0e6cc")
+    return c
+
+
+# ------------------------------------------------------------------- props
+def prop_well():
+    c = Canvas(96, 96)
+    c.ellipse(48, 90, 40, 5, "0b0a0e", flat=True)
+    wall = c.rect(14, 56, 82, 90, "685e72")
+    for r in range(4):
+        for k in range(6):
+            x0 = 14 + k * 12 + (r % 2) * 6
+            c.rect(x0, 57 + r * 8, x0 + 1, 64 + r * 8, "221b2c")
+        c.rect(14, 56 + r * 8, 82, 57 + r * 8, "221b2c")
+    c.rect(14, 56, 82, 58, "958b97")
+    c.rect(18, 50, 78, 56, "0c0912")
+    for px_ in (18, 76):
+        c.rect(px_, 14, px_ + 4, 56, "522d17")
+    c.poly([(8, 18), (48, 2), (88, 18), (80, 22), (48, 9), (16, 22)], "3a0d11", amb=1.0, grad=(-0.5, -0.6, 0.6))
+    c.rect(20, 24, 76, 27, "381f11")
+    c.line(48, 26, 48, 40, 1.0, "a7997c")
+    c.rect(42, 40, 54, 50, "6b3c1c")
+    return c
+
+
+def prop_grave():
+    c = Canvas(64, 64)
+    c.ellipse(32, 60, 26, 4, "0b0a0e", flat=True)
+    c.ellipse(32, 52, 22, 8, "2f431a", amb=0.6, k=0.6)   # grave mound
+    st = c.rect(20, 18, 44, 54, "685e72")
+    c.ellipse(32, 18, 12, 9, "685e72", amb=0.6, k=0.6)
+    c.rect(20, 18, 23, 54, "7f7585")
+    c.line(32, 22, 32, 36, 2, "221b2c"); c.line(26, 27, 38, 27, 2, "221b2c")
+    moss = (c.a > 0) & (value_noise(64, 64, 4, 3, 2) > 0.62) & (c.yy > 30)
+    c.rgb[moss] = np.array([61, 86, 31], np.float32)
+    return c
+
+
+def prop_lamppost():
+    c = Canvas(48, 128)
+    c.ellipse(24, 124, 10, 3, "0b0a0e", flat=True)
+    c.rect(22, 30, 26, 124, "1f2735")
+    c.rect(18, 116, 30, 124, "2d3849")
+    c.rect(14, 14, 34, 32, "2d3849")
+    c.rect(17, 17, 31, 30, "fdd687", emissive="feeac3")
+    c.poly([(12, 14), (24, 4), (36, 14)], "1f2735", amb=1.0)
+    c.glow(24, 23, 16, "e77b22", 0.6)
+    return c
+
+
+MONSTERS.update({"hound": hound, "priest": priest, "guard": guard, "innkeeper": innkeeper})
+# props: canvas function, world width, world height (in cells)
+PROPS = {"well": (prop_well, 0.8, 0.8), "grave": (prop_grave, 0.5, 0.5), "lamppost": (prop_lamppost, 0.375, 1.0)}

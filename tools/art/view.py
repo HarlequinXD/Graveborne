@@ -19,6 +19,14 @@ def torch_steps(d):
     return np.minimum(0.7, -(d - 0.9) * 1.75)
 
 
+def torch_steps_out(d):
+    """Outdoors the moon keeps distant shapes faintly visible instead of black."""
+    return np.maximum(np.minimum(0.6, -(d - 0.9) * 1.05), -4.2)
+
+
+LIGHT = {"dungeon": torch_steps, "out": torch_steps_out}
+THEME_OF_GROUND = {"dungeon": "floor", "forest": "grass", "town": "cobble"}
+
 FACE_FRONT = 0.0
 FACE_SIDE = -1.1
 FLOOR = -0.5
@@ -30,10 +38,17 @@ _tex_cache = {}
 def tex(kind):
     if kind not in _tex_cache:
         from textures import SURFACES, flagstone_floor, ceiling
+        from textures_out import OUT_SURFACES, forest_floor, cobbles
         if kind == "floor":
             alb, emi, a = flagstone_floor(), None, None
         elif kind == "ceil":
             alb, emi, a = ceiling(), None, None
+        elif kind == "grass":
+            alb, emi, a = forest_floor(), None, None
+        elif kind == "cobble":
+            alb, emi, a = cobbles(), None, None
+        elif kind in OUT_SURFACES:
+            alb, emi, a = OUT_SURFACES[kind]()
         else:
             alb, emi, a = SURFACES[kind]()
         idx, glow = paint_texture(alb, emi)
@@ -59,7 +74,7 @@ def _sample(t, u, v):
     return t[iv, iu]
 
 
-def _resolve(kind, u, v, dist, valid, face_bias):
+def _resolve(kind, u, v, dist, valid, face_bias, light="dungeon"):
     """Majority colour of the supersamples (keeps clean pixel-art clusters), then light it."""
     idx_t, glow_t, a_t = tex(kind)
     si = _sample(idx_t, u, v)
@@ -77,13 +92,13 @@ def _resolve(kind, u, v, dist, valid, face_bias):
     n = np.maximum(flat_w.sum(-1), 1)
     glow = (sg.reshape(flat_w.shape) * flat_w).sum(-1) / n
     d = (np.where(w, dist, 0).reshape(flat_w.shape)).sum(-1) / n
-    steps = torch_steps(d) + face_bias
+    steps = LIGHT[light](d) + face_bias
     steps = np.maximum(steps, steps * (1 - np.clip(glow, 0, 1)) + glow * 2.4)
     lit = light_indices(idx, steps)
     return lit, cov >= 0.5, d
 
 
-def render_face(kind, side, X4, Z4):
+def render_face(kind, side, X4, Z4, light="dungeon"):
     """One face of the block whose centre is (X4/4, Z4/4) cells from the camera.
     side=False: near (front) face; side=True: the face turned towards the view axis."""
     cx, cz = X4 / 4.0, Z4 / 4.0
@@ -116,11 +131,11 @@ def render_face(kind, side, X4, Z4):
         bias = FACE_SIDE
     if not valid.any():
         return None
-    return _resolve(kind, u, v, dist, valid, bias)
+    return _resolve(kind, u, v, dist, valid, bias, light)
 
 
-def face_sprite(kind, side, X4, Z4):
-    r = render_face(kind, side, X4, Z4)
+def face_sprite(kind, side, X4, Z4, light="dungeon"):
+    r = render_face(kind, side, X4, Z4, light)
     if r is None:
         return None
     idx, mask, d = r
@@ -132,7 +147,20 @@ def face_sprite(kind, side, X4, Z4):
     return rgba
 
 
-def backdrop_sprite(fx, fz):
+_sky_cache = {}
+
+
+def sky_indices(theme, facing=0):
+    key = (theme, facing)
+    if key not in _sky_cache:
+        from textures_out import sky
+        col, emi = sky(theme, facing=facing)
+        idx, _ = paint_texture(col + emi, emi)
+        _sky_cache[key] = idx
+    return _sky_cache[key]
+
+
+def backdrop_sprite(fx, fz, theme="dungeon", facing=0):
     """Floor and ceiling for camera fraction (fx, fz) in cells."""
     with np.errstate(divide="ignore"):
         s = np.where(RY < 0, -0.5 / np.minimum(RY, -1e-6), 0.5 / np.maximum(RY, 1e-6))
@@ -144,8 +172,12 @@ def backdrop_sprite(fx, fz):
     v = 1.0 - ((wz + 0.5) % 1.0)
     dist = np.sqrt(x * x + z * z)
     valid = np.ones(u.shape, bool)
-    fl, fm, _ = _resolve("floor", u, v, dist, valid & (RY < 0), FLOOR)
-    ce, cm, _ = _resolve("ceil", u, v, dist, valid & (RY >= 0), CEIL)
-    idx = np.where(fm, fl, ce)
+    if theme == "dungeon":
+        fl, fm, _ = _resolve("floor", u, v, dist, valid & (RY < 0), FLOOR)
+        ce, cm, _ = _resolve("ceil", u, v, dist, valid & (RY >= 0), CEIL)
+        idx = np.where(fm, fl, ce)
+    else:
+        fl, fm, _ = _resolve(THEME_OF_GROUND[theme], u, v, dist, valid & (RY < 0), FLOOR, "out")
+        idx = np.where(fm, fl, sky_indices(theme, facing))
     rgba, _ = finish(idx, np.ones(idx.shape, bool), outline=False)
     return rgba

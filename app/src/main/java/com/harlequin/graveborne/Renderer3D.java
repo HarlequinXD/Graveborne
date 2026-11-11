@@ -8,8 +8,7 @@ import java.util.HashMap;
  * Real-time 3D tile renderer for the 128x128 view, in the style of Game Boy Advance 3D
  * (Driv3r, Asterix &amp; Obelix XXL) and the PS1: every grid cell is built from textured
  * quads, drawn as triangles with
- *  - affine texture mapping (UVs interpolated in screen space, no perspective divide,
- *    so textures bend on near walls and floors),
+ *  - perspective-correct texture mapping,
  *  - vertices snapped to whole pixels (no sub-pixel precision, so geometry jitters),
  *  - per-vertex (Gouraud) torch light, stepping each texel along its colour ramp,
  *  - heavy 4x4 ordered dithering on the light ramps and a 15-bit colour pass.
@@ -223,7 +222,7 @@ public final class Renderer3D {
 
     private final int[] sxv = new int[16], syv = new int[16];
 
-    /** Affine triangle: every attribute is interpolated linearly in screen space. */
+    /** Textured triangle, perspective-correct, from pixel-snapped corners. */
     private void tri(int a, int b, int c, int t, int flash) {
         int x0 = sxv[a], y0 = syv[a], x1 = sxv[b], y1 = syv[b], x2 = sxv[c], y2 = syv[c];
         long area = (long) (x1 - x0) * (y2 - y0) - (long) (x2 - x0) * (y1 - y0);
@@ -245,10 +244,12 @@ public final class Renderer3D {
                 float w2 = 1 - w0 - w1;
                 if (w0 < 0 || w1 < 0 || w2 < 0) continue;
                 int i = y * V + x;
-                float z = w0 * A[2] + w1 * B[2] + w2 * C[2];
+                // perspective-correct: interpolate 1/z and attribute/z, then divide back
+                float iz = w0 / A[2] + w1 / B[2] + w2 / C[2];
+                float z = 1f / iz;
                 if (z >= depth[i]) continue;
-                float u = w0 * A[3] + w1 * B[3] + w2 * C[3];
-                float v = w0 * A[4] + w1 * B[4] + w2 * C[4];
+                float u = (w0 * A[3] / A[2] + w1 * B[3] / B[2] + w2 * C[3] / C[2]) * z;
+                float v = (w0 * A[4] / A[2] + w1 * B[4] / B[2] + w2 * C[4] / C[2]) * z;
                 short px_;
                 int tu, tv;
                 if (tt != null) {
@@ -262,7 +263,7 @@ public final class Renderer3D {
                 }
                 if (px_ < 0) continue;
                 pIdx[i] = px_;
-                pSteps[i] = w0 * A[5] + w1 * B[5] + w2 * C[5];
+                pSteps[i] = (w0 * A[5] / A[2] + w1 * B[5] / B[2] + w2 * C[5] / C[2]) * z;
                 pGlow[i] = ((tt != null ? gg[tv * T + tu] : curSpr.glow[tv * curSpr.w + tu]) & 255) / 255f;
                 depth[i] = z;
                 flashPix[i] = flash != 0;

@@ -1,4 +1,4 @@
-"""Builds floor 1 (The Oubliette) from room rectangles into app/src/main/assets/level1.txt
+"""Builds floor 1 (The Crypt) from room rectangles into app/src/main/assets/level1.txt
 and writes a top-down preview PNG.
 
 Legend: # wall  . floor  D door  L locked door  B cell bars  X secret wall (bed)
@@ -20,12 +20,13 @@ def put(x, y, ch):
     g[y][x] = ch
 
 
-# prison block
-room(1, 12, 16, 12)                 # cell corridor
+# burial halls: a long hall with tomb chambers sealed behind iron crypt gates
+room(1, 12, 16, 12)
 for cx in (2, 5, 8, 13):
     room(cx, 14, cx, 14)
     put(cx, 13, "B")
-put(9, 14, "X")                     # bed wall that slides away
+room(8, 15, 8, 15)                  # your sarcophagus lies here, behind where you stand
+put(9, 14, "X")                     # burial-niche wall that sinks away
 room(10, 14, 10, 16)                # secret tunnel
 room(10, 16, 15, 16)
 room(15, 13, 15, 16)
@@ -41,24 +42,33 @@ put(12, 11, "L")
 put(13, 5, "H")
 put(16, 5, "S")
 
-lines = ["# Graveborne floor 1: The Oubliette", "NAME The Oubliette", "THEME dungeon", "STAIRS exit", "NEXT level2.txt", "MAP"]
+lines = ["# Graveborne floor 1: The Crypt", "NAME The Crypt", "THEME dungeon", "STAIRS exit", "NEXT level2.txt", "INTRO", "MAP"]
 lines += ["".join(r) for r in g]
 lines += ["END",
           "START 8 14 N",
-          # the cell: loose brick behind you, bed slab on your right, chains on the left
-          "DECO 8 15 N switch",
-          "DECO 9 14 W bed",
-          "DECO 7 14 E chains",
-          "DECO 2 15 N chains",
-          "DECO 13 15 N chains",
+          # the tomb chamber: crypt gate ahead, your sarcophagus behind, the lever hidden
+          # in the carved plaque above it, burial niches on either side
+          "PROP 8 15 sarcophagus",
+          "DECO 8 16 N lever",
+          "DECO 9 14 W tomb",
+          "DECO 7 14 E loculi",
+          "DECO 7 15 E loculi",
+          "DECO 9 15 W loculi",
+          "DECO 2 15 N loculi",
+          "DECO 13 15 N loculi",
           "DECO 7 11 S sconce",
           "DECO 14 11 S sconce",
           "DECO 0 8 E sconce",
-          "DECO 7 4 E chains",
+          "DECO 7 4 E ossuary",
           "DECO 9 0 S sigil",
           "DECO 10 8 E sigil",
           "DECO 12 5 S sconce",
-          "DECO 16 11 N chains",
+          "DECO 16 11 N ossuary",
+          "DECO 4 11 S loculi",
+          "DECO 10 11 S loculi",
+          "DECO 11 13 N loculi",
+          "DECO 0 10 E loculi",
+          "DECO 11 17 N ossuary",
           "MON 12 16 ghoul",
           "MON 6 12 skeleton",
           "MON 2 8 skeleton",
@@ -70,9 +80,11 @@ lines += ["END",
           "ITEM 2 7 key",
           "ITEM 9 5 potion",
           "ITEM 11 1 potion",
-          "ITEM 5 14 bones",
-          "ITEM 13 14 bones",
-          "ITEM 2 14 bones",
+          "PROP 5 14 coffin",
+          "PROP 13 14 coffin",
+          "PROP 2 14 coffin",
+          "PROP 4 7 coffin",
+          "ITEM 15 15 bones",
           ]
 open(sys.argv[1], "w").write("\n".join(lines) + "\n")
 

@@ -1,8 +1,8 @@
-# Graveborne floor 2: prison grounds and the Ashen Wood
+# Graveborne floor 2: the graveyard and the Ashen Wood
 NAME The Ashen Wood
 THEME forest
 WALL # tree tree tree2 tree tree3
-WALL P prison prison prisonwin
+WALL P prison
 WALL Q pdoor
 WALL F palisade
 STAIRS towngate
@@ -38,8 +38,18 @@ PPPPPPPQPPPPPPP###########
 ##########################
 END
 START 7 4 S
+PROP 3 5 grave
+PROP 5 6 grave
+PROP 9 6 grave
+PROP 11 5 grave
+PROP 6 7 grave
+PROP 8 7 grave
+PROP 3 7 grave
+PROP 11 7 grave
+PROP 4 8 grave
+PROP 10 8 grave
 MON 7 12 hound
-MON 4 17 hound
+MON 3 17 hound
 MON 13 17 wraith
 MON 18 16 skeleton
 MON 20 19 hound

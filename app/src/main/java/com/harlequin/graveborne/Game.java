@@ -47,6 +47,10 @@ public final class Game {
     private float idleHintT;
     private int hintsGiven;
     private boolean switchPressed;
+    // sarcophagus wake-up: 0 lying under the lid, 1 lid sliding off, 2 climbing out, 3 done
+    private int intro = 3;
+    private float introT;
+    private static final float LID_TIME = 1.3f, RISE_TIME = 1.1f;
 
     private static final class Msg {
         final String s; final int c; float age;
@@ -86,9 +90,16 @@ public final class Game {
         keys = 0; potions = 1; xp = 0; plevel = 1;
         log.clear();
         loadLevel("level1.txt");
-        say("YOU WAKE ON COLD STONE.", Pal.BONE);
-        say("NO HEART BEATS IN YOUR CHESTS.", Pal.STONE7);
-        say("THE CURSE HAS RAISED YOU AGAIN.", Pal.CURSE_L);
+        if (lv.intro) {
+            intro = 0; introT = 0;
+            say("DARKNESS. COLD STONE PRESSES", Pal.BONE);
+            say("INCHES ABOVE YOUR FACE.", Pal.BONE);
+            say("TAP TO PUSH.", Pal.GOLD);
+        } else {
+            say("YOU WAKE ON COLD STONE.", Pal.BONE);
+            say("NO HEART BEATS IN YOUR CHESTS.", Pal.STONE7);
+            say("THE CURSE HAS RAISED YOU AGAIN.", Pal.CURSE_L);
+        }
     }
 
     private String levelFile;
@@ -137,6 +148,7 @@ public final class Game {
             if (f.t > 0.9f) floaters.remove(i);
         }
         if (state != PLAY) return;
+        if (intro < 3) { updateIntro(dt); return; }
         updateAnim(dt);
         updateSecret(dt);
         updateDoors(dt);
@@ -144,8 +156,29 @@ public final class Game {
         updateMonsters(dt);
         if (!switchPressed) {
             idleHintT += dt;
-            if (hintsGiven == 0 && idleHintT > 35) { say("A COLD DRAFT SEEPS FROM THE WALL BEHIND YOU...", Pal.TEAL_L); hintsGiven = 1; }
-            if (hintsGiven == 1 && idleHintT > 75) { say("ONE BRICK IN THE BACK WALL IS WORN SMOOTH BY HANDS.", Pal.TEAL_L); hintsGiven = 2; }
+            if (hintsGiven == 0 && idleHintT > 35) { say("A DRAFT STIRS IN THE CARVINGS ABOVE YOUR SARCOPHAGUS...", Pal.TEAL_L); hintsGiven = 1; }
+            if (hintsGiven == 1 && idleHintT > 75) { say("THE SKULL PLAQUE BEHIND YOUR SARCOPHAGUS HIDES SOMETHING IRON.", Pal.TEAL_L); hintsGiven = 2; }
+        }
+    }
+
+    private void pushLid() {
+        if (intro != 0) return;
+        intro = 1; introT = 0;
+        audio.sfx("grind");
+        shake = 0.3f;
+        say("YOU HEAVE THE STONE LID ASIDE.", Pal.STONE8);
+    }
+
+    private void updateIntro(float dt) {
+        if (intro == 0) return;
+        introT += dt;
+        if (intro == 1 && introT >= LID_TIME) { intro = 2; introT = 0; audio.sfx("thud"); shake = 0.25f; }
+        else if (intro == 2 && introT >= RISE_TIME) {
+            intro = 3;
+            say("YOU CLIMB FROM YOUR SARCOPHAGUS.", Pal.BONE);
+            say("NO HEART BEATS IN YOUR CHESTS.", Pal.STONE7);
+            say("THE CURSE HAS RAISED YOU AGAIN.", Pal.CURSE_L);
+            markSeen();
         }
     }
 
@@ -186,13 +219,13 @@ public final class Game {
                 shake = Math.max(shake, s == 3 ? 0.5f : 0.35f);
                 int bedDir = bedFaceDir();
                 if (s < 3) {
-                    lv.setDeco(secretX, secretY, bedDir, "bed" + (s + 1));
+                    lv.setDeco(secretX, secretY, bedDir, "tomb" + (s + 1));
                     if (s == 0) { say("STONE GRINDS " + relWhere(secretX, secretY) + "...", Pal.STONE8); audio.sfx("grind"); }
                 } else {
                     audio.sfx("thud");
                     lv.setDeco(secretX, secretY, bedDir, null);
                     lv.cell[secretY][secretX] = Level.FLOOR;
-                    say("THE BED SLAB HAS SUNK. A PASSAGE YAWNS OPEN.", Pal.TEAL_L);
+                    say("THE WALL OF THE DEAD HAS SUNK AWAY. A PASSAGE YAWNS OPEN.", Pal.TEAL_L);
                     secretT = -1;
                     markSeen();
                 }
@@ -203,7 +236,7 @@ public final class Game {
     private int bedFaceDir() {
         for (int d = 0; d < 4; d++) {
             String k = lv.deco(secretX, secretY, d);
-            if (k != null && k.startsWith("bed")) return d;
+            if (k != null && k.startsWith("tomb")) return d;
         }
         return Level.W;
     }
@@ -351,6 +384,7 @@ public final class Game {
         if (state == TITLE) { if (stateT > 0.4f) { state = PLAY; stateT = 0; audio.sfx("start"); audio.music(lv.theme); } return; }
         if (state == DEAD) { if (stateT > 1.2f) respawn(); return; }
         if (state == WIN) { if (stateT > 1.5f) { newGame(); state = TITLE; stateT = 0; } return; }
+        if (intro < 3) { pushLid(); return; }
         // view: use what's in front
         if (x >= VX && x < VX + 128 && y >= VY && y < VY + 128) { input(showMap ? ACT_MAP : ACT_USE); return; }
         // left column
@@ -395,6 +429,7 @@ public final class Game {
     /** Desktop keys and taps funnel here; movement queues one action while animating. */
     public void input(int a) {
         if (state != PLAY) { tap(0, 0); return; }
+        if (intro < 3) { pushLid(); return; }
         boolean move = a <= ACT_TURNR;
         if (move && anim != A_NONE) {
             if (queue.size() < 1) queue.add(a);
@@ -449,7 +484,7 @@ public final class Game {
         audio.music(lv.theme);
         if (lv.theme.equals("forest")) {
             say("YOU CLIMB INTO MOONLIGHT.", Pal.TEAL_L);
-            say("THE PRISON LOOMS BEHIND YOU. AHEAD, THE ASHEN WOOD.", Pal.STONE7);
+            say("THE MAUSOLEUM LOOMS BEHIND YOU. BEYOND THE GRAVES, THE ASHEN WOOD.", Pal.STONE7);
         } else if (lv.theme.equals("town")) {
             say("THE GATE GROANS SHUT BEHIND YOU.", Pal.STONE7);
             say("LANTERNS. SMOKE. THE LIVING. HOLLOWMERE.", Pal.GOLD);
@@ -461,16 +496,25 @@ public final class Game {
         char c = lv.at(fx, fy);
         int face = (dir + 2) & 3;
         String deco = lv.deco(fx, fy, face);
-        if ("switch".equals(deco)) {
-            lv.setDeco(fx, fy, face, "switch_on");
+        // the lever hides in the plaque above your sarcophagus: reach over the coffin for it
+        int lx = fx, ly = fy;
+        Item before = lv.propAt(fx, fy);
+        if (before != null && before.type.equals("sarcophagus")) {
+            lx = fx + Level.DX[dir]; ly = fy + Level.DY[dir];
+            String d2 = lv.deco(lx, ly, face);
+            if (d2 != null && d2.startsWith("lever")) deco = d2;
+            else { say("YOUR SARCOPHAGUS. THE LID LIES SHOVED ASIDE.", Pal.STONE7); return; }
+        }
+        if ("lever".equals(deco)) {
+            lv.setDeco(lx, ly, face, "lever_on");
             switchPressed = true;
             audio.sfx("click");
             shake = 0.12f;
-            say("CLICK. THE LOOSE BRICK SINKS INTO THE WALL.", Pal.BONE);
+            say("BEHIND THE SKULL, AN IRON LEVER. YOU HAUL IT DOWN.", Pal.BONE);
             if (secretX >= 0) secretT = 0;
             return;
         }
-        if ("switch_on".equals(deco)) { say("THE BRICK WILL NOT MOVE AGAIN.", Pal.STONE7); return; }
+        if ("lever_on".equals(deco)) { say("THE LEVER WILL NOT MOVE AGAIN.", Pal.STONE7); return; }
         switch (c) {
             case Level.DOOR:
                 if (lv.doorAnim[fy][fx] <= 0) { lv.doorAnim[fy][fx] = 0.001f; say("THE DOOR GROANS UPWARD.", Pal.STONE8); audio.sfx("door"); }
@@ -484,8 +528,8 @@ public final class Game {
                     audio.sfx("unlock"); audio.sfx("door");
                 } else { say("LOCKED. YOU NEED A KEY.", Pal.STONE7); audio.sfx("locked"); }
                 return;
-            case Level.BARS: say("THE CELL DOOR IS LOCKED FROM OUTSIDE.", Pal.STONE7); audio.sfx("bars"); return;
-            case Level.SECRET: say("A STONE SLAB BED, BUILT INTO THE WALL.", Pal.STONE7); return;
+            case Level.BARS: say("THE CRYPT GATE IS CHAINED SHUT FROM OUTSIDE.", Pal.STONE7); audio.sfx("bars"); return;
+            case Level.SECRET: say("BURIAL NICHES. THE DEAD SLEEP IN ROWS.", Pal.STONE7); return;
             case Level.SHRINE: shrine(); return;
             case Level.STAIRS:
                 if (lv.next != null) descend();
@@ -499,6 +543,7 @@ public final class Game {
         Item prop = lv.propAt(fx, fy);
         if (prop != null) {
             if (prop.type.equals("well")) say("BLACK WATER, FAR BELOW. SOMETHING BREATHES DOWN THERE.", Pal.STONE7);
+            else if (prop.type.equals("coffin")) say("A SEALED SARCOPHAGUS. SOMETHING INSIDE SHIFTS.", Pal.STONE7);
             else if (prop.type.equals("grave")) say("THE NAME IS WORN AWAY. THE EARTH IS FRESHLY TURNED.", Pal.STONE7);
             else say("THE LAMP BURNS STEADY.", Pal.FLAME);
             return;
@@ -508,11 +553,13 @@ public final class Game {
             if (k.startsWith("tree")) say("THE TREES ARE GREY WITH ASH.", Pal.STONE6);
             else if (k.startsWith("house")) say("SHUTTERED TIGHT. SOMEONE INSIDE IS PRAYING.", Pal.STONE7);
             else if (k.equals("towngate")) say("THE GATE IS BARRED FOR THE NIGHT.", Pal.STONE7);
-            else if (k.equals("pdoor")) say("YOU WILL NOT GO BACK DOWN THERE.", Pal.STONE7);
+            else if (k.equals("pdoor")) say("YOU WILL NOT GO BACK INTO THE CRYPT.", Pal.STONE7);
             else say("ROUGH, COLD STONE.", Pal.STONE6);
             return;
         }
         if (deco != null && deco.equals("chains")) { say("RUSTED SHACKLES. STILL WARM.", Pal.STONE7); return; }
+        if (deco != null && deco.equals("loculi")) { say("THE DEAD SLEEP IN ROWS. THEY DID NOT WAKE.", Pal.STONE7); return; }
+        if (deco != null && deco.equals("ossuary")) { say("A WALL OF SKULLS, NEATLY STACKED.", Pal.BONE); return; }
         if (deco != null && deco.equals("sigil")) { say("THE CURSE SIGIL PULSES LIKE A HEART.", Pal.CURSE_L); return; }
         if (deco != null && deco.equals("sconce")) { say("THE TORCH BURNS WITHOUT HEAT.", Pal.FLAME); return; }
         if (lv.solid(fx, fy)) say("COLD, SWEATING STONE.", Pal.STONE6);
@@ -660,6 +707,7 @@ public final class Game {
         if (showMap && state == PLAY) { drawMap(); return; }
         int[] buf = renderViewNow();
         g.copy(buf, 128, 0, 0, VX + sxo, VY + syo, 128, 128);
+        if (intro < 2) drawLid();
         if (sxo != 0 || syo != 0) {
             // keep the frame clean when shaking
             g.fill(VX - 1, VY - 1, 130, 1, Pal.INK); g.fill(VX - 1, VY + 128, 130, 1, Pal.INK);
@@ -700,10 +748,41 @@ public final class Game {
             }
             default: break;
         }
+        float eyeH = 0.5f;
+        if (intro < 3) {
+            // lying in the sarcophagus behind the start cell, then sitting up and stepping out
+            float k = intro == 2 ? ease(Math.min(1f, introT / RISE_TIME)) : 0f;
+            x -= Level.DX[dir] * (1 - k) * 0.85f;
+            y -= Level.DY[dir] * (1 - k) * 0.85f;
+            eyeH = 0.16f + 0.34f * k;
+        }
         x -= (float) Math.sin(ang) * SETBACK;
         y += (float) Math.cos(ang) * SETBACK;
+        r3d.eye = eyeH;
+        // hide your own sarcophagus while you are inside it
+        Item own = intro < 3 ? lv.propAt(px - Level.DX[dir], py - Level.DY[dir]) : null;
+        if (own != null) lv.items.remove(own);
         r3d.render(lv, x, y, ang, time, 0);
+        if (own != null) lv.items.add(own);
+        r3d.eye = 0.5f;
         return r3d.out.px;
+    }
+
+    /** The underside of the sarcophagus lid, then the lid grinding off to the side. */
+    private void drawLid() {
+        Atlas.Sprite lid = atlas.get("ui:lid");
+        float k = intro == 1 ? ease(Math.min(1f, introT / LID_TIME)) : 0f;
+        int off = (int) (k * 140);
+        if (lid != null) g.blit(lid, VX + off, VY, 0, VX, VY, 128, 128);
+        if (intro == 0) {
+            g.shade(VX, VY, 128, 128, 120);
+            // a thin seam of light where the lid doesn't quite meet the stone
+            int a = 60 + (int) (40 * Math.sin(time * 2));
+            g.fill(VX, VY + 126, 128, 2, 0xff000000 | (a << 16) | (a << 8) | (a + 20));
+            if (((int) (time * 1.5f) & 1) == 0) g.textC("TAP TO PUSH", VX + 64, VY + 58, Pal.GOLD);
+        } else {
+            g.fill(VX + off - 2, VY, 2, 128, Pal.INK);
+        }
     }
 
     private void drawMap() {
@@ -851,7 +930,7 @@ public final class Game {
         g.textC("THE RISEN DEAD", W / 2, ty + 22, Pal.TEAL_L);
         g.textC("AGAINST THE ETERNAL CURSE", W / 2, ty + 32, Pal.TEAL_L);
         if (((int) (time * 2) & 1) == 0) g.textC("TAP TO RISE", W / 2, vy + 140, Pal.GOLD);
-        g.textC("FLOOR I: THE OUBLIETTE", W / 2, H - 20, Pal.STONE6);
+        g.textC("FLOOR I: THE CRYPT", W / 2, H - 20, Pal.STONE6);
     }
 
     private void drawDead() {

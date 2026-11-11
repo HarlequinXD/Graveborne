@@ -373,3 +373,49 @@ def prop_lamppost():
 MONSTERS.update({"hound": hound, "priest": priest, "guard": guard, "innkeeper": innkeeper})
 # props: canvas function, world width, world height (in cells)
 PROPS = {"well": (prop_well, 0.8, 0.8), "grave": (prop_grave, 0.5, 0.5), "lamppost": (prop_lamppost, 0.375, 1.0)}
+
+
+# ----------------------------------------------------------- crypt furniture
+def _sarc_body(c, top_y=40):
+    base = c.rect(8, top_y, 120, 92, "685e72")
+    c.rect(8, top_y, 120, top_y + 4, "958b97")
+    c.rect(8, 86, 120, 92, "41384d")
+    # carved panels along the side
+    for k in range(4):
+        x0 = 14 + k * 27
+        c.rect(x0, top_y + 10, x0 + 22, 82, "5d5369")
+        c.rect(x0, top_y + 10, x0 + 22, top_y + 12, "41384d")
+        c.rect(x0, 80, x0 + 22, 82, "7f7585")
+    c.rect(8, top_y, 11, 92, "7f7585")
+    c.rect(117, top_y, 120, 92, "41384d")
+    c.ellipse(64, 95, 62, 4, "0b0a0e", flat=True)
+    return base
+
+
+def prop_coffin():
+    """A sealed stone sarcophagus with a carved lid."""
+    c = Canvas(128, 96)
+    _sarc_body(c, 40)
+    c.poly([(4, 40), (124, 40), (116, 26), (12, 26)], "7f7585", amb=1.0, grad=(-0.5, -0.8, 0.5))
+    c.rect(4, 38, 124, 42, "958b97")
+    # effigy carved on the lid
+    c.ellipse(30, 31, 6, 4, "958b97", amb=0.6, k=0.6)
+    c.capsule(38, 31, 100, 31, 4, "8f879e")
+    c.line(54, 28, 70, 34, 2, "685e72")
+    return c
+
+
+def prop_sarcophagus():
+    """Your own sarcophagus: lid shoved half off, the shroud you woke in still inside."""
+    c = Canvas(128, 96)
+    _sarc_body(c, 44)
+    c.rect(10, 40, 118, 46, "15131a")             # dark open interior
+    c.rect(20, 41, 70, 45, "a39a7c")             # shroud
+    # lid shoved askew, tilted off one end and propped on the floor
+    c.poly([(54, 36), (126, 22), (128, 30), (58, 46)], "7f7585", amb=1.0, grad=(-0.5, -0.8, 0.5))
+    c.poly([(58, 46), (128, 30), (128, 36), (60, 52)], "4b4458", amb=1.0)
+    c.line(60, 41, 124, 27, 1.2, "958b97")
+    return c
+
+
+PROPS.update({"coffin": (prop_coffin, 0.9, 0.55), "sarcophagus": (prop_sarcophagus, 0.9, 0.55)})

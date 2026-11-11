@@ -26,7 +26,7 @@ class Grid:
 
 def level2():
     m = Grid(26, 27)
-    # the prison: building to the north, a walled courtyard, a gap in the wall to the wood
+    # the crypt's mausoleum to the north, a walled graveyard, a broken gate to the wood
     m.room(0, 0, 14, 3, "P")
     m.room(1, 4, 1, 9, "P"); m.room(13, 4, 13, 9, "P"); m.room(1, 9, 13, 9, "P")
     m.room(2, 4, 12, 8)
@@ -46,16 +46,18 @@ def level2():
     # Hollowmere's palisade and gate on the southern edge
     m.room(14, 24, 25, 24, "F")
     m.put(22, 24, "S")
-    lines = ["# Graveborne floor 2: prison grounds and the Ashen Wood",
+    lines = ["# Graveborne floor 2: the graveyard and the Ashen Wood",
              "NAME The Ashen Wood", "THEME forest",
              "WALL # tree tree tree2 tree tree3",
-             "WALL P prison prison prisonwin",
+             "WALL P prison",
              "WALL Q pdoor",
              "WALL F palisade",
              "STAIRS towngate", "SHRINE shrine", "NEXT level3.txt",
              "MAP"] + m.rows() + ["END",
              "START 7 4 S",
-             "MON 7 12 hound", "MON 4 17 hound", "MON 13 17 wraith", "MON 18 16 skeleton",
+             "PROP 3 5 grave", "PROP 5 6 grave", "PROP 9 6 grave", "PROP 11 5 grave", "PROP 6 7 grave", "PROP 8 7 grave",
+             "PROP 3 7 grave", "PROP 11 7 grave", "PROP 4 8 grave", "PROP 10 8 grave",
+             "MON 7 12 hound", "MON 3 17 hound", "MON 13 17 wraith", "MON 18 16 skeleton",
              "MON 20 19 hound", "MON 19 21 skeleton",
              "PROP 10 14 grave", "PROP 15 14 grave", "PROP 10 18 grave", "PROP 12 18 grave",
              "ITEM 3 18 potion", "ITEM 15 18 potion", "ITEM 5 13 bones"]

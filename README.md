@@ -26,12 +26,14 @@ way out of the Oubliette.
 * Left column: map, grave blood (healing), keys.
 
 ## The start
-You wake in a cell facing the barred door. Behind you one brick is loose; the stone bed
-slab is in the right-hand wall. Press the brick and the bed sinks away into a secret passage.
+You wake inside a sarcophagus, the stone lid inches from your face. Tap to heave it
+aside and climb out into the tomb chamber, facing a chained iron crypt gate. A lever is
+hidden behind the skull carved into the plaque above your sarcophagus: haul it down and a
+wall of burial niches sinks into the floor, off to your left, opening a secret passage.
 
 ## The journey so far
-1. **The Oubliette**: escape the cell through the secret passage, find the key, climb the stairs into moonlight.
-2. **The Ashen Wood**: the prison grounds, then winding forest paths, a grave clearing and a wayside shrine.
+1. **The Crypt**: climb out of your sarcophagus, find the hidden lever, escape through the burial halls and climb the stairs into moonlight.
+2. **The Ashen Wood**: the walled graveyard by the crypt's mausoleum, then winding forest paths, a grave clearing and a wayside shrine.
 3. **Hollowmere**: a lantern-lit town. Talk to the guard, the innkeeper and the priest, and rest at the inn.
 
 ## Sound

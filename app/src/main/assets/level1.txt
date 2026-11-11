@@ -1,8 +1,9 @@
-# Graveborne floor 1: The Oubliette
-NAME The Oubliette
+# Graveborne floor 1: The Crypt
+NAME The Crypt
 THEME dungeon
 STAIRS exit
 NEXT level2.txt
+INTRO
 MAP
 ##################
 ########....######
@@ -19,24 +20,32 @@ MAP
 #................#
 ##B##B##B####B#.##
 ##.##.##.X.##.#.##
-##########.####.##
+########.#.####.##
 ##########......##
 ##################
 END
 START 8 14 N
-DECO 8 15 N switch
-DECO 9 14 W bed
-DECO 7 14 E chains
-DECO 2 15 N chains
-DECO 13 15 N chains
+PROP 8 15 sarcophagus
+DECO 8 16 N lever
+DECO 9 14 W tomb
+DECO 7 14 E loculi
+DECO 7 15 E loculi
+DECO 9 15 W loculi
+DECO 2 15 N loculi
+DECO 13 15 N loculi
 DECO 7 11 S sconce
 DECO 14 11 S sconce
 DECO 0 8 E sconce
-DECO 7 4 E chains
+DECO 7 4 E ossuary
 DECO 9 0 S sigil
 DECO 10 8 E sigil
 DECO 12 5 S sconce
-DECO 16 11 N chains
+DECO 16 11 N ossuary
+DECO 4 11 S loculi
+DECO 10 11 S loculi
+DECO 11 13 N loculi
+DECO 0 10 E loculi
+DECO 11 17 N ossuary
 MON 12 16 ghoul
 MON 6 12 skeleton
 MON 2 8 skeleton
@@ -48,6 +57,8 @@ ITEM 13 16 potion
 ITEM 2 7 key
 ITEM 9 5 potion
 ITEM 11 1 potion
-ITEM 5 14 bones
-ITEM 13 14 bones
-ITEM 2 14 bones
+PROP 5 14 coffin
+PROP 13 14 coffin
+PROP 2 14 coffin
+PROP 4 7 coffin
+ITEM 15 15 bones

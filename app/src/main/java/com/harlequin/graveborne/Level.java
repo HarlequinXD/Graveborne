@@ -16,6 +16,8 @@ public final class Level {
 
     public String name = "";
     public String theme = "dungeon";
+    /** Start inside the sarcophagus behind the start cell (floor 1 only). */
+    public boolean intro;
     public String stairsKind = "stairs", shrineKind = "shrine", next = null;
     public final HashMap<Character, String[]> wallKinds = new HashMap<>();
     public int w, h;
@@ -47,6 +49,7 @@ public final class Level {
                 case "NAME": lv.name = line.substring(5).trim(); break;
                 case "MAP": inMap = true; break;
                 case "THEME": lv.theme = p[1]; break;
+                case "INTRO": lv.intro = true; break;
                 case "STAIRS": lv.stairsKind = p[1]; break;
                 case "SHRINE": lv.shrineKind = p[1]; break;
                 case "NEXT": lv.next = p[1]; break;

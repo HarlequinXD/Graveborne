@@ -18,6 +18,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 from pixelart import paint_texture, finish, PAL, RAMPS, RAMP_OF
 import textures as TX
+import textures_crypt as TC
 import textures_out as TO
 import actors
 import portraits
@@ -130,6 +131,9 @@ def main():
     # ------------------------------------------------- portraits and icons
     res = [(f"p:{n}", portraits.render(n), 0, 0) for n in portraits.PORTRAITS]
     res += [(f"ui:{k}", v, 0, 0) for k, v in ui.icons().items()]
+    lid_alb, lid_emi, _ = TC.lid_underside()
+    lid_idx, _ = paint_texture(lid_alb, lid_emi)
+    res.append(("ui:lid", rgba_of(lid_idx, np.ones(lid_idx.shape, bool)), 0, 0))
     for f_ in os.listdir(out):
         if f_.startswith("atlas") and f_.endswith(".png"):
             os.remove(os.path.join(out, f_))

@@ -16,7 +16,9 @@ import java.util.HashMap;
 public final class Renderer3D {
     public static final int V = 128;
     private static final float FOCAL = 64f;        // 90 degree field of view
-    private static final float EYE = 0.5f;
+    private static final float EYE_STAND = 0.5f;
+    /** Eye height in cells (0.5 standing; lower while climbing out of the sarcophagus). */
+    public float eye = EYE_STAND;
     public final Gfx out = new Gfx(V, V);
 
     // palette and ramps
@@ -215,7 +217,7 @@ public final class Renderer3D {
             float[] p = clip[i];
             float z = p[2];
             sxv[i] = Math.round(V / 2f + p[0] / z * FOCAL);
-            syv[i] = Math.round(V / 2f - (p[1] - EYE) / z * FOCAL);
+            syv[i] = Math.round(V / 2f - (p[1] - eye) / z * FOCAL);
         }
         for (int i = 1; i + 1 < n; i++) tri(0, i, i + 1, t, flash);
     }

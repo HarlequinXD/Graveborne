@@ -1,0 +1,85 @@
+# Graveborne Chapter IX: The Violet Night
+CHAPTER IX The Violet Night
+TOUGH 3
+NAME Hollowmere
+THEME town
+WALL h house house2 house house2
+WALL F palisade
+WALL G towngate
+WALL C chapel
+SHRINE I inn
+MAP
+FFFFFFFFFFFFFFFFFFFFF
+FhhhhhhhhhChhhhhhhhhF
+Fhhhhhhh.....hhhhhhhF
+Fhhhhhhh.....hhhhhhhF
+Fhhhhhhhhh.hhhhhhhhhF
+Fhhhhhhhhh.........hF
+Fhhhhhhhhh.hhhhhhh.hF
+Fh....hhhh.hhhhhhh.hF
+Fh.hhhhhhh.hhhhhhh.hF
+Fh.hhhhhhh.hhhhhhh.hF
+Fh.hhhh.......hhhh.hF
+Fh.hhhh.......Ihhh.hF
+Fh............hhhh.hF
+Fhhhhhh............hF
+Fhhhhhh.......hhhhhhF
+Fhhhhhhhhh.hhhhhhhhhF
+Fhh.hhhhhh.hhhhhhhhhF
+Fhh.hhhhhh.hhhhhhhhhF
+Fhh.hhhhhh.hhhhhhhhhF
+Fhh.hhhhhh.hhhhhhhhhF
+Fhh........hhhhhhhhhF
+Fhhhhhhhhh.hhhhhhhhhF
+Fhhhhhhhhh.hhhhhhhhhF
+Fhhhhhhhh...hhhhhhhhF
+Fhhhhhhhh...hhhhhhhhF
+Fhhhhhhhh...hhhhhhhhF
+FFFFFFFFFFGFFFFFFFFFF
+END
+START 10 25 N
+EXIT 10 1 level10.txt 12 23 N clear
+WAVES 10 13
+NPC 8 10 guard HOLD THE SQUARE! FOR HOLLOWMERE!
+NPC 13 12 innkeeper I'VE A CLEAVER AND A GRUDGE. COME ON, THEN!
+NPC 9 2 priest THE CHAPEL STANDS WHILE YOU STAND.
+NPC 7 14 townsman WE CHAINED YOU IN. AND HERE YOU ARE, FIGHTING FOR US.
+NPC 13 10 townsman FOR THE WARDENS!
+PROP 10 12 well
+PROP 7 10 lamppost
+PROP 13 14 lamppost
+PROP 3 16 pyre
+PROP 18 7 pyre
+ITEM 9 13 potion
+ITEM 11 11 potion
+ITEM 18 12 potion
+ITEM 4 20 potion
+WAVETEXT 1 GUARD: HERE THEY COME, UP THE GATE ROAD!
+WAVETEXT 2 INNKEEPER: GHOULS IN THE WIDOW'S ALLEY! AND THE MARKET LANE!
+WAVETEXT 3 PRIEST: WRAITHS OVER THE ROOFTOPS! HOLD THE CHAPEL ROAD!
+WAVETEXT 4 VESH: EVERYTHING IT HAS LEFT. HERE IT COMES.
+MON 10 22 skeleton 1
+MON 10 24 skeleton 1
+MON 10 20 hound 1
+MON 10 18 hound 1
+MON 10 23 skeleton 1
+MON 3 18 ghoul 2
+MON 4 20 ghoul 2
+MON 2 9 ghoul 2
+MON 2 11 hound 2
+MON 7 20 ghoul 2
+MON 10 5 wraith 3
+MON 18 9 wraith 3
+MON 15 13 skeleton 3
+MON 11 5 wraith 3
+MON 18 11 skeleton 3
+MON 10 22 ghoul 4
+MON 3 17 wraith 4
+MON 17 13 skeleton 4
+MON 2 8 hound 4
+MON 10 20 skeleton 4
+MON 10 6 wraith 4
+MON 18 6 ghoul 4
+MON 10 24 hound 4
+SCENE 10 25 Hollowmere is burning. The violet moon hangs low over the roofs, and the dead are coming out of the ash.|GUARD: WARDENS! THEY'RE OVER THE PALISADE! WE CAN'T HOLD THEM WITHOUT YOU!|ALDRIC: THE SQUARE. EVERY ROAD MEETS THERE. WE HOLD THE SQUARE.
+AFTERBOSS The dead stop coming. Dawn will not rise under this moon, but the town is still standing.|GUARD: WE CHAINED YOU IN. AND YOU CAME BACK FOR US.|PRIEST: YOU HAVE ALL FOUR STONES. I SEE IT IN YOUR FACES. YOU KNOW WHAT THEY ARE FOR NOW.|ALDRIC: WE KNOW. I KNOW WHAT I DID.|PRIEST: THEN TAKE THIS. THE KEY TO THE BARROW GATE BENEATH MY CHAPEL. THE ONE DOOR I WOULD NOT OPEN.|PRIEST: WHATEVER YOU CHOOSE DOWN THERE, HOLLOWMERE WILL REMEMBER YOU.

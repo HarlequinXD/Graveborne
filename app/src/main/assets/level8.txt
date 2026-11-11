@@ -1,0 +1,67 @@
+# Graveborne Chapter VIII: The Wardens' Keep
+CHAPTER VIII The Wardens' Keep
+NAME The Wardens' Keep
+THEME forest
+TOUGH 3
+WALL # tree tree2 tree3
+WALL r cliff
+WALL P prison prisonwin
+WALL k keep wall keep
+WALL Q pdoor
+FLOOR , path
+FLOOR ; floor roof
+SHRINE H shrine
+MAP
+############Q############
+#########k;;;;;k#########
+#########k;;;;;k#########
+###PPPPPPk;;;;;kPPPPPP###
+###Pkkkkkk;;;;;kkkkkkP###
+###PkkkkkkkkLkkkkkkkkP###
+###Pk;;;;;;;;;;;;;;;kP###
+###Pk;;;;;;;;;;;;;;;kP###
+###Pk;;;k;;;;;;;k;;;kP###
+###Pk;;;;;;;;;;;;;;;kP###
+###Pk;;;;;;;;;;;;;;;kP###
+###PkkkkkkkkDkkkkkkkkP###
+###P.................P###
+###P.................P###
+###P.................P###
+###P.................P###
+###P.................P###
+###P.................P###
+###P.PPPPPPH,PPPPPPPPP###
+#####.......,.......#####
+#####.......,....r..#####
+#####..r....,.......#####
+#####.......,..r....#####
+#####....r..,.......#####
+#########################
+END
+START 12 22 N
+EXIT 12 0 level9.txt 10 25 N boss+stone+letter
+MON 8 14 skeleton
+MON 16 15 skeleton
+MON 19 13 hound
+MON 5 16 ghoul
+MON 6 7 skeleton
+MON 18 7 skeleton
+MON 10 9 wraith
+MON 14 9 wraith
+BOSS 12 2 abbot
+ITEM 5 10 key
+ITEM 13 1 letter
+ITEM 11 1 stone
+ITEM 4 13 potion
+ITEM 19 6 potion
+ITEM 20 17 potion
+PROP 6 12 grave
+PROP 18 16 grave
+PROP 9 16 grave
+SCENE 12 22 The Wardens' Keep, where the four swore their oaths two hundred years ago. Its banners hang in rags.|ALDRIC: I KNELT IN THAT HALL. I SWORE ON A STONE BLACKER THAN THIS NIGHT.
+SCENE 12 16 SERA: SOMEONE STRUCK THROUGH THE ORDER'S SIGIL ON EVERY BANNER.|BRANN: SOMEONE WHO KNEW WHAT IT REALLY MEANT.
+SCENE 12 10 VESH: THE CHAPTER HOUSE IS LOCKED. THE ABBOT'S STEWARD SLEPT IN THE WEST END OF THE HALL. HE KEPT THE KEY.
+SCENE 12 4 THE LAST ABBOT: NO. NO, NOT YOU. YOU WERE NEVER MEANT TO COME HERE.|ALDRIC: YOU HID OUR STONES, ABBOT. WHY?|THE LAST ABBOT: BECAUSE WITHOUT YOU THIS TOWN DIES. I CHOSE HOLLOWMERE. I WOULD CHOOSE IT AGAIN.
+AFTERBOSS The Last Abbot crumbles. His journal lies open on the lectern, beside the last Oath-stone.
+SCENE 13 1 The abbot's journal:|"ALDRIC CAME BACK FROM THE BARROWS ALONE, WITH THE WOUND'S RIBBON ON HIS HELM. BEFORE HE DIED HE TOLD ME WHAT HE HAD DONE."|"HE STRUCK A BARGAIN WITH THE WOUND. LET THE FOUR RISE WHENEVER IT WAKES, AND THEY WILL FIGHT IT FOREVER. EACH TIME THEY SEAL IT, THEIR DEATHS FEED IT AGAIN."|"THE CURSE IS ETERNAL BECAUSE THEY ARE PART OF IT. BREAK THE OATHS AND THE PACT BREAKS. BUT THEN THE TOWN HAS NO CHAMPIONS. SO I HID THE STONES."
+SCENE 11 1 Aldric lifts his Oath-stone, and the last memory comes back.|ALDRIC: I REMEMBER. THE DARK. IT SPOKE TO ME IN MY OWN VOICE. WE WERE ALL GOING TO DIE.|ALDRIC: SO I GAVE IT US. FOREVER. I THOUGHT IT WAS A VICTORY.|BRANN: TWO HUNDRED YEARS OF DYING. YOU SIGNED US UP FOR IT.|SERA: HE SAVED THE TOWN. AND HE DAMNED US. BOTH.|VESH: THE WOUND WILL HAVE FELT THE STONES MOVE. IT KNOWS WE CAN END IT NOW.|ALDRIC: THEN IT WILL GO FOR HOLLOWMERE. RUN.

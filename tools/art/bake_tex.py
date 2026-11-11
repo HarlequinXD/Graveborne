@@ -21,6 +21,8 @@ import textures as TX
 import textures_crypt as TC
 import textures_out as TO
 import actors
+import bosses
+import textures_story as TS
 import portraits
 import ui
 from build_all import pack
@@ -48,6 +50,10 @@ def main():
         add(k, *f())
     for k, f in TO.OUT_SURFACES.items():
         add(k, *f())
+    for k, f in TS.STORY_SURFACES.items():
+        add(k, *f())
+    for k, f in TS.STORY_FLOORS.items():
+        add(k, f(), None, None)
     add("floor", TX.flagstone_floor(), None, None)
     add("ceil", TX.ceiling(), None, None)
     add("grass", TO.forest_floor(), None, None)
@@ -84,6 +90,16 @@ def main():
             if name in ("priest", "guard", "innkeeper") and fr == "attack":
                 continue
             add_sprite(f"m:{name}:{fr}", fn(fr), 0.75, 1.0, 0.04 if name == "wraith" else 0.0)
+    for name, (fn, ww, wh, lift) in bosses.BOSSES.items():
+        for fr in actors.FRAMES:
+            add_sprite(f"m:{name}:{fr}", fn(fr), ww, wh, lift)
+    for name, fn in bosses.NPCS.items():
+        for fr in ("idle", "idle2"):
+            add_sprite(f"m:{name}:{fr}", fn(fr), 0.75, 1.0)
+    for name, fn in bosses.ITEMS.items():
+        add_sprite(f"i:{name}", fn(), 0.5, 0.25)
+    for name, (fn, ww, wh) in bosses.PROPS.items():
+        add_sprite(f"o:{name}", fn(), ww, wh)
     for name, fn in actors.ITEMS.items():
         add_sprite(f"i:{name}", fn(), 0.5, 0.25)
     for name, (fn, ww, wh) in actors.PROPS.items():

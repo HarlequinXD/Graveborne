@@ -48,6 +48,7 @@ def level2():
     m.room(14, 24, 25, 24, "F")
     m.put(22, 24, "S")
     lines = ["# Graveborne floor 2: the graveyard and the Ashen Wood",
+             "CHAPTER II The Graveyard and the Ashen Wood",
              "NAME The Ashen Wood", "THEME forest",
              "WALL # tree tree tree2 tree tree3",
              "WALL P prison",
@@ -57,7 +58,18 @@ def level2():
              "MAP"] + m.rows() + ["END",
              "START 7 4 S",
              "EXIT 7 3 level1.txt 16 6 S",
-             "EXIT 22 24 vale.txt 40 19 S",
+             "EXIT 22 24 level3.txt 10 25 N",
+             "SCENE 7 4 Moonlight. A violet halo rings the moon over a walled graveyard."
+             "|SERA: THE GRAVES ARE OLD. NOT ONE NEW STONE IN A GENERATION."
+             "|BRANN: SO WHERE DO THEY PUT THEIR DEAD NOW?",
+             "SCENE 7 9 VESH: THE GATE WAS BROKEN FROM THE INSIDE. WHATEVER ROSE HERE WALKED OUT INTO THE WOOD.",
+             "SCENE 7 12 The trees are grey from root to crown."
+             "|SERA: ASH. ON EVERY BRANCH. THEY BURN THEIR DEAD NOW."
+             "|ALDRIC: SO NOTHING NEW CAN RISE. CLEVER. AND COLD.",
+             "SCENE 13 14 Old graves, their names worn away, their earth freshly turned. Something clawed its way out of every one."
+             "|ALDRIC: A GRAVE SHRINE AT THE EDGE OF THE CLEARING. PRAY HERE BEFORE WE GO ON.",
+             "SCENE 22 23 Lanterns burn behind a log palisade. The smell of woodsmoke, and of the living."
+             "|ALDRIC: HOLLOWMERE. KEEP YOUR WEAPONS LOW.",
              "PROP 3 5 grave", "PROP 5 6 grave", "PROP 9 6 grave", "PROP 11 5 grave", "PROP 6 7 grave", "PROP 8 7 grave",
              "PROP 3 7 grave", "PROP 11 7 grave", "PROP 4 8 grave", "PROP 10 8 grave",
              "MON 7 12 hound", "MON 3 17 hound", "MON 13 17 wraith", "MON 18 16 skeleton",

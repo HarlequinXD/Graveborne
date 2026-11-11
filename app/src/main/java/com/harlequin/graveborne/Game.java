@@ -33,6 +33,16 @@ public final class Game {
     /** Every map visited this game, kept as you left it (dead stay dead, doors stay open). */
     private final java.util.HashMap<String, Level> world = new java.util.HashMap<>();
     private Level.Area area;
+    // ---- story
+    /** Pages waiting to be read: {speaker, text}; speaker "#CARD" draws a chapter card. */
+    private final ArrayDeque<String[]> pages = new ArrayDeque<>();
+    private final java.util.HashSet<String> cardsShown = new java.util.HashSet<>();
+    private float pageT;
+    private int stones;
+    private boolean choosing;
+    private int ending;            // 1 sealed, 2 unmade
+    private final ArrayList<String> endLines = new ArrayList<>();
+    private boolean bossMusic;
     private String banner = "";
 
     // ---- movement animation
@@ -92,7 +102,8 @@ public final class Game {
 
     public void newGame() {
         party = Member.party();
-        keys = 0; potions = 1; xp = 0; plevel = 1;
+        keys = 0; potions = 1; xp = 0; plevel = 1; stones = 0;
+        pages.clear(); cardsShown.clear(); choosing = false; ending = 0; endLines.clear(); bossMusic = false;
         log.clear();
         world.clear();
         loadLevel("level1.txt");
@@ -113,8 +124,18 @@ public final class Game {
     private void loadLevel(String file) { loadLevel(file, -1, -1, -1); }
 
     /** Enter a map (from cache if visited before), at its start or at (tx, ty) facing tdir. */
+    /** Test hook: stand on a cell as if you had walked there. */
+    public void debugAt(int x, int y, int d) { px = x; py = y; dir = d; arrive(); markSeen(); }
+    public void debugStones(int n) { stones = n; }
+
+    public String debugLevel() {
+        Monster ah = lv.monsterAt(px + Level.DX[dir], py + Level.DY[dir]);
+        Monster bb = lv.boss();
+        String a = ah == null ? "none" : ah.label + ":" + ah.hp + " mt" + ah.moveT;
+        return "ahead=" + a + " " + levelFile + " boss=" + (bb != null ? bb.hp + "@" + bb.x + "," + bb.y : "-1") + " stones=" + stones + " wave=" + lv.wave + " hostiles=" + lv.hostilesAlive() + " state=" + state + " pages=" + pages.size(); }
+
     /** Test hook: jump straight to a map (skips the intro). */
-    public void debugGo(String file, int tx, int ty, int tdir) { intro = 3; state = PLAY; loadLevel(file, tx, ty, tdir); }
+    public void debugGo(String file, int tx, int ty, int tdir) { intro = 3; state = PLAY; pages.clear(); loadLevel(file, tx, ty, tdir); }
 
     private void loadLevel(String file, int tx, int ty, int tdir) {
         levelFile = file;
@@ -131,6 +152,12 @@ public final class Game {
         for (int y = 0; y < lv.h; y++) for (int x = 0; x < lv.w; x++) if (lv.cell[y][x] == Level.SECRET) { secretX = x; secretY = y; }
         if (secretX < 0) switchPressed = true;  // no hints outside the cell
         bannerT = 3.0f;
+        bossMusic = false;
+        if (lv.chapterNum != null && cardsShown.add(file)) {
+            pages.add(new String[]{"#CARD", lv.chapterNum + "|" + lv.chapterTitle});
+            bannerT = 0;
+        }
+        if (!lv.intro) fireScene(px, py);
         dist = null;
         markSeen();
         if (state == PLAY) audio.music(lv.theme);
@@ -154,19 +181,28 @@ public final class Game {
 
     private void travel(String[] ex) {
         String file = ex[0];
+        String conds = ex.length > 4 && ex[4] != null ? ex[4] : "";
+        for (String cond : conds.split("\\+")) {
+            if (cond.isEmpty()) continue;
+            if (cond.equals("boss")) {
+                if (lv.bossAlive()) { say("THE WAY IS SEALED WHILE " + lv.boss().label + " STILL STANDS.", Pal.CURSE_L); audio.sfx("locked"); return; }
+            } else if (cond.equals("clear")) {
+                if (lv.waveX >= 0 && lv.wave < 0) { say("THE TOWN NEEDS YOU. HOLD THE SQUARE.", Pal.STONE7); return; }
+                if (lv.wave >= 0 && lv.wave < 99 || lv.hostilesAlive() > 0) { say("NOT WHILE THE DEAD STILL COME. HOLD THE TOWN.", Pal.CURSE_L); audio.sfx("locked"); return; }
+            } else {
+                for (Item it : lv.items)
+                    if (it.type.equals(cond)) { say("YOU HAVE NOT FOUND WHAT YOU CAME FOR.", Pal.STONE7); return; }
+            }
+        }
         int tx = Integer.parseInt(ex[1]), ty = Integer.parseInt(ex[2]), td = Level.DIRS.indexOf(ex[3].charAt(0));
         boolean fromDungeon = lv.theme.equals("dungeon");
         audio.sfx(fromDungeon ? "stairs" : "gate");
         loadLevel(file, tx, ty, td);
+        audio.music(area != null ? area.music : lv.theme);
         if (fromDungeon && !lv.theme.equals("dungeon")) say("YOU CLIMB INTO MOONLIGHT.", Pal.TEAL_L);
         else if (lv.theme.equals("dungeon")) say("YOU DESCEND INTO " + lv.name.toUpperCase() + ".", Pal.STONE7);
-        if (file.equals("vale.txt") && !reachedTown) {
-            reachedTown = true;
-            say("LANTERNS. SMOKE. THE LIVING. HOLLOWMERE.", Pal.GOLD);
-            say("FOUR GATES LEAD OUT INTO THE VALE. GO WHERE YOU WILL.", Pal.STONE7);
-        }
     }
-    private boolean reachedTown;
+
 
     private void say(String s, int c) {
         // wrap to the log width
@@ -193,8 +229,11 @@ public final class Game {
             if (f.t > 0.9f) floaters.remove(i);
         }
         if (state != PLAY) return;
-        if (intro < 3) { updateIntro(dt); return; }
+        pageT += dt;
+        if (intro < 3) { if (!inScene()) updateIntro(dt); return; }
+        if (inScene() || choosing) { if (anim != A_NONE) updateAnim(dt); return; }
         updateAnim(dt);
+        updateSiege();
         updateSecret(dt);
         updateDoors(dt);
         updateParty(dt);
@@ -224,6 +263,116 @@ public final class Game {
             say("NO HEART BEATS IN YOUR CHESTS.", Pal.STONE7);
             say("THE CURSE HAS RAISED YOU AGAIN.", Pal.CURSE_L);
             markSeen();
+            fireScene(px, py);
+        }
+    }
+
+    // =================================================================== story
+    /** Queue a scene's pages: "ALDRIC: words" is spoken, plain text is narration. */
+    private void playScene(String[] lines) {
+        for (String l : lines) {
+            String sp = "", t = l.trim();
+            int c = t.indexOf(": ");
+            if (c > 0 && c < 26 && t.substring(0, c).equals(t.substring(0, c).toUpperCase()) && !t.substring(0, c).contains(".")) {
+                sp = t.substring(0, c); t = t.substring(c + 2);
+            }
+            // split long speeches into pages of four log lines
+            ArrayList<String> wrapped = wrap(t, 27);
+            for (int i = 0; i < wrapped.size(); i += 4) {
+                StringBuilder b = new StringBuilder();
+                for (int k = i; k < Math.min(i + 4, wrapped.size()); k++) b.append(k > i ? "\n" : "").append(wrapped.get(k));
+                pages.add(new String[]{sp, b.toString()});
+            }
+        }
+        pageT = 0;
+    }
+
+    private void fireScene(int x, int y) {
+        String[] sc = lv.scenes.remove(y * lv.w + x);
+        if (sc != null) playScene(sc);
+    }
+
+    private static ArrayList<String> wrap(String s, int max) {
+        ArrayList<String> out = new ArrayList<>();
+        while (s.length() > max) {
+            int cut = s.lastIndexOf(' ', max);
+            if (cut <= 0) cut = max;
+            out.add(s.substring(0, cut));
+            s = s.substring(cut).trim();
+        }
+        out.add(s);
+        return out;
+    }
+
+    private boolean inScene() { return !pages.isEmpty(); }
+
+    private void nextPage() {
+        if (pageT < 0.25f) return;
+        String[] p = pages.poll();
+        pageT = 0;
+        audio.sfx("click");
+        if (p != null && p[0].isEmpty() && p[1].startsWith("~")) {} // reserved
+        if (pages.isEmpty() && ending > 0) { state = WIN; stateT = 0; }
+    }
+
+    private void nextWave() {
+        lv.wave++;
+        boolean any = false;
+        for (int i = lv.waiting.size() - 1; i >= 0; i--) {
+            Monster m = lv.waiting.get(i);
+            if (m.wave == lv.wave) { lv.waiting.remove(i); m.awake = true; lv.monsters.add(m); any = true; }
+        }
+        if (!any) { lv.wave = 99; return; }
+        String t = lv.waveText.get(lv.wave);
+        if (t != null) playScene(t.split("\\|"));
+        audio.music("boss"); bossMusic = true;
+        shake = 0.3f;
+    }
+
+    private void updateSiege() {
+        if (lv.wave < 0 || lv.wave >= 99) return;
+        if (lv.hostilesAlive() == 0) {
+            nextWave();
+            if (lv.wave >= 99) {
+                bossMusic = false;
+                audio.music(area != null ? area.music : lv.theme);
+                if (lv.afterBoss != null) { playScene(lv.afterBoss); lv.afterBoss = null; }
+            }
+        }
+    }
+
+    private void bossFell(Monster b) {
+        if (lv.bossAlive()) return;
+        bossMusic = false;
+        audio.music(area != null ? area.music : lv.theme);
+        // the dead it raised fall with it
+        for (Monster m : lv.monsters) if (!m.npc() && m.alive() && m.summoned) { m.hp = 0; }
+        if (lv.afterBoss != null) { playScene(lv.afterBoss); lv.afterBoss = null; }
+    }
+
+    private void summon(Monster b, float dt) {
+        if (b.summon == null || !b.awake) return;
+        b.summonCd -= dt;
+        if (b.summonCd > 0) return;
+        b.summonCd = b.summonEvery;
+        int alive = 0;
+        for (Monster m : lv.monsters) if (m.summoned && m.alive()) alive++;
+        if (alive >= 3) return;
+        int[] order = {0, 1, 2, 3};
+        for (int k = 0; k < 4; k++) {
+            int d = order[(k + rnd.nextInt(4)) & 3];
+            for (int r = 1; r <= 2; r++) {
+                int nx = b.x + Level.DX[d] * r, ny = b.y + Level.DY[d] * r;
+                if (!lv.passable(nx, ny) || partyOn(nx, ny) || lv.monsterAt(nx, ny) != null) break;
+                if (r == 1 && lv.passable(nx + Level.DX[d], ny + Level.DY[d])) continue;
+                Monster m = new Monster(b.summon, nx, ny);
+                m.awake = true; m.summoned = true; m.xp = m.xp / 2;
+                lv.monsters.add(m);
+                say("THE " + b.label + " " + b.summonVerb + "!", Pal.CURSE_L);
+                audio.sfx("growl_" + m.snd);
+                shake = Math.max(shake, 0.15f);
+                return;
+            }
         }
     }
 
@@ -247,11 +396,15 @@ public final class Game {
 
     private void arrive() {
         checkArea(true);
+        fireScene(px, py);
+        if (lv.wave < 0 && px == lv.waveX && py == lv.waveY) { lv.wave = 0; nextWave(); }
         Item it = lv.itemAt(px, py);
         if (it != null && it.pickable()) {
             lv.items.remove(it);
             if (it.type.equals("key")) { keys++; say("YOU TAKE AN IRON KEY.", Pal.GOLD); audio.sfx("key"); }
             else if (it.type.equals("potion")) { potions++; say("YOU TAKE A VIAL OF GRAVE BLOOD.", Pal.RED_L); audio.sfx("pickup"); }
+            else if (it.type.equals("stone")) { stones++; say("AN OATH-STONE. " + stones + " OF 4.", Pal.CURSE_L); audio.sfx("shrine"); shake = 0.3f; }
+            else if (it.type.equals("letter")) { say("YOU TAKE THE SEALED PAGES.", Pal.PARCH); audio.sfx("pickup"); }
         }
     }
 
@@ -347,7 +500,7 @@ public final class Game {
 
     private void updateMonsters(float dt) {
         computeDist();
-        for (Monster m : lv.monsters) {
+        for (Monster m : new ArrayList<>(lv.monsters)) {
             if (!m.alive()) continue;
             m.idleT += dt;
             if (m.npc()) continue;
@@ -357,17 +510,23 @@ public final class Game {
             int d = dist[m.y][m.x];
             if (!m.awake && d <= 6) {
                 m.awake = true;
-                audio.sfx("growl_" + m.type);
-                if (d <= 3) say("A " + m.label + " STIRS " + relWhere(m.x, m.y) + "!", Pal.RED_L);
+                audio.sfx("growl_" + m.snd);
+                if (m.boss) {
+                    banner = m.label; bannerT = 3f;
+                    audio.music("boss"); bossMusic = true;
+                    shake = 0.35f;
+                    say(m.label + " RISES TO MEET YOU!", Pal.CURSE_L);
+                } else if (d <= 3) say("A " + m.label + " STIRS " + relWhere(m.x, m.y) + "!", Pal.RED_L);
             }
             if (!m.awake) continue;
+            if (m.boss) summon(m, dt);
             boolean adjacent = Math.abs(m.x - px) + Math.abs(m.y - py) == 1 && m.moveT >= 1 && anim != A_FWD && anim != A_BACK && anim != A_STRAFE;
             if (adjacent) {
                 m.attackCd -= dt;
                 if (m.attackCd <= 0) {
                     m.attackCd = m.attackEvery * (0.85f + rnd.nextFloat() * 0.3f);
                     m.attackAnim = 0.4f;
-                    audio.sfx("atk_" + m.type);
+                    audio.sfx("atk_" + m.snd);
                     monsterHits(m);
                 }
             } else {
@@ -414,7 +573,7 @@ public final class Game {
         t.hp = Math.max(0, t.hp - dmg);
         t.hurtFlash = 0.35f;
         shake = Math.max(shake, 0.18f);
-        String verb = m.type.equals("ghoul") ? "CLAWS" : m.type.equals("wraith") ? "CHILLS" : "CUTS";
+        String verb = m.boss ? "STRIKES" : m.snd.equals("ghoul") ? "CLAWS" : m.snd.equals("wraith") ? "CHILLS" : "CUTS";
         String where = from == dir ? "" : from == ((dir + 2) & 3) ? " FROM BEHIND" : relWhere(m.x, m.y).replace("TO YOUR", "FROM THE");
         say("THE " + m.label + " " + verb + " " + t.name + where + " (" + dmg + ")", Pal.RED_L);
         audio.sfx(t.alive() ? "ouch" : "fall");
@@ -429,8 +588,10 @@ public final class Game {
     public void tap(int x, int y) {
         if (state == TITLE) { if (stateT > 0.4f) { state = PLAY; stateT = 0; audio.sfx("start"); audio.music(lv.theme); } return; }
         if (state == DEAD) { if (stateT > 1.2f) respawn(); return; }
-        if (state == WIN) { if (stateT > 1.5f) { newGame(); state = TITLE; stateT = 0; } return; }
+        if (state == WIN) { if (stateT > 3f) { newGame(); state = TITLE; stateT = 0; } return; }
+        if (inScene()) { nextPage(); return; }
         if (intro < 3) { pushLid(); return; }
+        if (choosing) { choose(y); return; }
         // view: use what's in front
         if (x >= VX && x < VX + 128 && y >= VY && y < VY + 128) { input(showMap ? ACT_MAP : ACT_USE); return; }
         // left column
@@ -475,7 +636,9 @@ public final class Game {
     /** Desktop keys and taps funnel here; movement queues one action while animating. */
     public void input(int a) {
         if (state != PLAY) { tap(0, 0); return; }
+        if (inScene()) { nextPage(); return; }
         if (intro < 3) { pushLid(); return; }
+        if (choosing) return;
         boolean move = a <= ACT_TURNR;
         if (move && anim != A_NONE) {
             if (queue.size() < 1) queue.add(a);
@@ -553,6 +716,14 @@ public final class Game {
             if (d2 != null && d2.startsWith("lever")) deco = d2;
             else { say("YOUR SARCOPHAGUS. THE LID LIES SHOVED ASIDE.", Pal.STONE7); return; }
         }
+        String[] lever = lv.leverAt(fx, fy, face);
+        if (lever != null && "lever".equals(deco)) { pullLever(fx, fy, face, lever); return; }
+        if (fx == lv.choiceX && fy == lv.choiceY) {
+            if (lv.bossAlive()) { say("THE HEART BEATS. IT WILL NOT LET YOU NEAR.", Pal.CURSE_L); return; }
+            if (inScene()) return;
+            if (stones < 4) { say("YOU NEED ALL FOUR OATH-STONES.", Pal.STONE7); return; }
+            choosing = true; audio.sfx("rise"); return;
+        }
         if ("lever".equals(deco)) {
             lv.setDeco(lx, ly, face, "lever_on");
             switchPressed = true;
@@ -615,6 +786,56 @@ public final class Game {
         if (deco != null && deco.equals("sigil")) { say("THE CURSE SIGIL PULSES LIKE A HEART.", Pal.CURSE_L); return; }
         if (deco != null && deco.equals("sconce")) { say("THE TORCH BURNS WITHOUT HEAT.", Pal.FLAME); return; }
         if (lv.solid(fx, fy)) say("COLD, SWEATING STONE.", Pal.STONE6);
+    }
+
+    private void pullLever(int x, int y, int face, String[] act) {
+        lv.setDeco(x, y, face, "lever_on");
+        audio.sfx("click"); shake = 0.15f;
+        if (act[0].equals("open")) {
+            int tx = Integer.parseInt(act[1]), ty = Integer.parseInt(act[2]);
+            lv.cell[ty][tx] = Level.FLOOR;
+            for (int d = 0; d < 4; d++) lv.setDeco(tx, ty, d, null);
+            audio.sfx("grind"); shake = 0.4f;
+            say("YOU HAUL THE LEVER. STONE GRINDS " + relWhere(tx, ty) + ".", Pal.STONE8);
+        } else if (act[0].equals("drain")) {
+            int x0 = Integer.parseInt(act[1]), y0 = Integer.parseInt(act[2]), x1 = Integer.parseInt(act[3]), y1 = Integer.parseInt(act[4]);
+            for (int yy = y0; yy <= y1; yy++)
+                for (int xx = x0; xx <= x1; xx++)
+                    if (lv.blocked.contains(lv.cell[yy][xx])) lv.cell[yy][xx] = act.length > 5 ? act[5].charAt(0) : Level.FLOOR;
+            audio.sfx("grind"); shake = 0.4f;
+            say("A SLUICE GROANS OPEN. THE BLACK WATER DRAINS AWAY.", Pal.TEAL_L);
+        }
+        markSeen();
+    }
+
+    private static final int CH_Y = VY + 52;
+
+    private void choose(int y) {
+        if (y >= CH_Y && y < CH_Y + 22) endGame(1);
+        else if (y >= CH_Y + 30 && y < CH_Y + 52) endGame(2);
+    }
+
+    private void endGame(int kind) {
+        choosing = false;
+        ending = kind;
+        audio.music("ending");
+        if (kind == 1) playScene(new String[]{
+                "ALDRIC: THEN WE DO AS WE HAVE ALWAYS DONE.",
+                "The four lay their hands on the Wound and give it their deaths, as they did two hundred years ago, and every time since.",
+                "The violet light gutters and sinks back into the earth. Far above, the halo fades from the moon.",
+                "They walk back through the barrows, the town and the ash-grey wood, and lie down together in their sarcophagus.",
+                "SERA: SAME AS ALWAYS?",
+                "ALDRIC: SAME AS ALWAYS. UNTIL THE MOON TURNS.",
+                "Hollowmere is safe for another generation. The curse remains eternal.",
+                "The lid grinds shut, from inside."});
+        else playScene(new String[]{
+                "ALDRIC: NO MORE. I MADE THIS BARGAIN. I WILL BREAK IT.",
+                "One by one the four set down their Oath-stones and unsay the words they swore on them.",
+                "VESH: FOR THE WATCH.", "SERA: FOR THE BARROW MOUTH.", "BRANN: FOR EVERY SEAM I EVER BROKE.",
+                "ALDRIC: AND FOR THE DARK I WALKED INTO ALONE.",
+                "The violet ribbon on Aldric's helm turns to ash. The Wound has nothing left to feed on. It closes like an eye.",
+                "Across the vale, every risen body falls still and crumbles to dust. The four Wardens fall with them, and this time nothing raises them.",
+                "In spring, Hollowmere buries its dead in earth again. Green shoots push up through the ash of the Ashen Wood."});
     }
 
     private void shrine(String kind) {
@@ -683,9 +904,10 @@ public final class Game {
         target.hp -= dmg;
         target.hitFlash = 0.14f;
         floaters.add(new Floater("" + dmg, Pal.FLAME, 64 + rnd.nextInt(20) - 10, 46));
-        audio.sfx(target.alive() ? "hurt_" + target.type : "die_" + target.type);
+        audio.sfx(target.alive() ? "hurt_" + target.snd : "die_" + target.snd);
         if (!target.alive()) {
-            say(a.name + " DESTROYS THE " + target.label + ".", Pal.GOLD);
+            say(a.name + " DESTROYS " + (target.boss ? "" : "THE ") + target.label + ".", Pal.GOLD);
+            if (target.boss) { shake = 0.5f; bossFell(target); }
             xp += target.xp;
             int need = plevel * plevel * 20;
             if (xp >= need) {
@@ -706,6 +928,10 @@ public final class Game {
         for (Member m : party) m.hp = Math.max(1, m.maxHp / 2);
         anim = A_NONE; queue.clear();
         for (Monster m : lv.monsters) { m.awake = false; m.moveT = 1; m.fromX = m.x; m.fromY = m.y; }
+        // a fallen boss fight starts over: it heals, and the dead it raised crumble
+        for (Monster m : lv.monsters) { if (m.boss && m.alive()) m.hp = m.maxHp; if (m.summoned) m.hp = 0; }
+        lv.monsters.removeIf(m -> m.summoned);
+        bossMusic = false;
         state = PLAY; stateT = 0;
         audio.music(lv.theme);
         audio.sfx("rise");
@@ -773,12 +999,61 @@ public final class Game {
             g.fill(VX - 1, VY - 1, 1, 130, Pal.INK); g.fill(VX + 128, VY - 1, 1, 130, Pal.INK);
         }
         for (Floater f : floaters) g.textC(f.s, VX + (int) f.x, VY + (int) f.y, f.c);
+        drawBossBar();
+        if (inScene()) drawPageOverlay();
+        if (choosing) drawChoice();
         if (bannerT > 0 && state == PLAY) {
             String n = banner.toUpperCase();
             int bw = Gfx.width(n) + 12;
             g.shade(VX + 64 - bw / 2, VY + 6, bw, 13, 110);
             g.textC(n, VX + 64, VY + 9, Pal.CURSE_L);
         }
+    }
+
+    private void drawBossBar() {
+        if (state != PLAY || inScene()) return;
+        for (Monster m : lv.monsters) {
+            if (!m.boss || !m.awake || !m.alive()) continue;
+            int bw = 112, bx = VX + 8, by = VY + 116;
+            g.shade(bx - 2, by - 9, bw + 4, 16, 120);
+            if (bannerT <= 0) g.textC(m.label, VX + 64, by - 8, Pal.CURSE_L);
+            g.fill(bx, by, bw, 4, Pal.INK);
+            g.fill(bx + 1, by + 1, (bw - 2) * m.hp / m.maxHp, 2, Pal.RED);
+            return;
+        }
+    }
+
+    private void drawPageOverlay() {
+        String[] p = pages.peek();
+        if (p[0].equals("#CARD")) {
+            String[] t = p[1].split("\\|");
+            g.shade(VX, VY, 128, 128, 200);
+            g.textC("CHAPTER " + t[0], VX + 64, VY + 38, Pal.STONE7);
+            g.fill(VX + 34, VY + 50, 60, 1, Pal.BRASS);
+            ArrayList<String> w = wrap(t[1].toUpperCase(), 18);
+            for (int i = 0; i < w.size(); i++) g.textC(w.get(i), VX + 64, VY + 58 + i * 12, Pal.CURSE_L);
+            return;
+        }
+        // the speaker's face, if it is one of the four
+        for (Member m : party)
+            if (m.name.equals(p[0])) {
+                g.fill(VX + 3, VY + 83, 42, 42, Pal.INK);
+                g.blit(atlas.get("p:" + m.portrait), VX + 4, VY + 84);
+                g.frame(VX + 3, VY + 83, 42, 42, Pal.BRASS);
+            }
+    }
+
+    private void drawChoice() {
+        g.shade(VX, VY, 128, 128, 170);
+        g.textC("THE WOUND WAITS", VX + 64, VY + 16, Pal.CURSE_L);
+        g.textC("FOR THE OLD WORDS.", VX + 64, VY + 26, Pal.CURSE_L);
+        g.panel(VX + 10, CH_Y, 108, 22, Pal.STONE2, Pal.STONE5, Pal.STONE1);
+        g.textC("SEAL IT", VX + 64, CH_Y + 4, Pal.TEAL_L);
+        g.textC("SLEEP, RISE AGAIN", VX + 64, CH_Y + 13, Pal.STONE7);
+        g.panel(VX + 10, CH_Y + 30, 108, 22, Pal.BLOOD, Pal.RED, Pal.INK);
+        g.textC("UNMAKE IT", VX + 64, CH_Y + 34, Pal.GOLD);
+        g.textC("BREAK THE OATHS", VX + 64, CH_Y + 43, Pal.STONE8);
+        g.textC("TAP TO CHOOSE", VX + 64, VY + 116, Pal.STONE6);
     }
 
     private static final float SETBACK = 0.15f;   // camera stands a little behind the cell centre
@@ -904,11 +1179,44 @@ public final class Game {
         g.textC("L" + plevel, rx + 10, VY + 34, Pal.CURSE_L);
         g.panel(rx, VY + 52, 20, 24, Pal.STONE2, Pal.STONE4, Pal.STONE1);
         g.blit(atlas.get("ui:use"), rx + 4, VY + 58);
+        if (stones > 0) {
+            g.panel(rx, VY + 80, 20, 24, Pal.STONE2, Pal.STONE4, Pal.STONE1);
+            for (int i = 0; i < 4; i++) g.fill(rx + 3 + i * 4, VY + 85, 3, 5, i < stones ? Pal.CURSE_L : Pal.STONE1);
+            g.textC(stones + "/4", rx + 10, VY + 93, Pal.CURSE_L);
+        }
+    }
+
+    private static int speakerColor(String sp) {
+        switch (sp) {
+            case "ALDRIC": return Pal.GOLD;
+            case "BRANN": return Pal.FIRE;
+            case "SERA": return Pal.BONE;
+            case "VESH": return Pal.TEAL_L;
+            case "": return Pal.STONE8;
+            default: return Pal.CURSE_L;
+        }
     }
 
     private void drawLog() {
         g.panel(3, logY, W - 6, 46, 0xff0c0706, Pal.WOOD_D, Pal.WOOD_D);
         g.frame(4, logY + 1, W - 8, 44, Pal.WOOD);
+        if (inScene() && state == PLAY) {
+            String[] p = pages.peek();
+            if (p[0].equals("#CARD")) {
+                g.textC("TAP TO BEGIN", W / 2, logY + 19, ((int) (time * 2) & 1) == 0 ? Pal.GOLD : Pal.STONE6);
+                return;
+            }
+            int y = logY + 4;
+            if (!p[0].isEmpty()) { g.text(p[0], 8, y, speakerColor(p[0])); y += 9; }
+            String[] ls = p[1].split("\n");
+            for (String l : ls) {
+                if (y > logY + 38) break;
+                g.text(p[0].isEmpty() ? l.toUpperCase() : l, 8, y, p[0].isEmpty() ? Pal.STONE8 : Pal.PARCH);
+                y += 8;
+            }
+            if (((int) (time * 3) & 1) == 0) g.fill(W - 12, logY + 38, 4, 3, Pal.GOLD);
+            return;
+        }
         int y = logY + 4;
         for (int i = 0; i < log.size(); i++) {
             Msg m = log.get(i);
@@ -994,7 +1302,7 @@ public final class Game {
         g.textC("THE RISEN DEAD", W / 2, ty + 22, Pal.TEAL_L);
         g.textC("AGAINST THE ETERNAL CURSE", W / 2, ty + 32, Pal.TEAL_L);
         if (((int) (time * 2) & 1) == 0) g.textC("TAP TO RISE", W / 2, vy + 140, Pal.GOLD);
-        g.textC("FLOOR I: THE CRYPT", W / 2, H - 20, Pal.STONE6);
+        g.textC("CHAPTER I: THE CRYPT", W / 2, H - 20, Pal.STONE6);
     }
 
     private void drawDead() {
@@ -1005,10 +1313,28 @@ public final class Game {
     }
 
     private void drawWin() {
-        g.shade(0, 0, W, H, 70);
-        g.textC("YOU DESCEND", W / 2, H / 2 - 30, Pal.TEAL_L);
-        g.textC("DEEPER INTO THE CURSE...", W / 2, H / 2 - 18, Pal.TEAL_L);
-        g.textC("END OF FLOOR I", W / 2, H / 2 + 4, Pal.GOLD);
-        if (stateT > 1.5f) g.textC("TAP TO RETURN", W / 2, H / 2 + 24, Pal.STONE8);
+        // fade to black, then the last words
+        if (stateT < 1.2f) { g.shade(0, 0, W, H, 60 + (int) (stateT * 150)); return; }
+        g.fill(0, 0, W, H, Pal.INK);
+        int cy = H / 2 - 60;
+        if (ending == 2) {
+            g.textC("THE CURSE", W / 2, cy, Pal.GREEN, 2);
+            g.textC("IS ENDED", W / 2, cy + 20, Pal.GREEN);
+            g.textC("THE WARDENS REST AT LAST.", W / 2, cy + 40, Pal.BONE);
+            g.textC("GREEN SHOOTS IN THE ASH.", W / 2, cy + 50, Pal.STONE7);
+        } else {
+            g.textC("THE CURSE", W / 2, cy, Pal.CURSE_L, 2);
+            g.textC("ENDURES", W / 2, cy + 20, Pal.CURSE_L);
+            g.textC("UNTIL THE MOON", W / 2, cy + 40, Pal.BONE);
+            g.textC("TURNS VIOLET AGAIN.", W / 2, cy + 50, Pal.BONE);
+        }
+        for (int i = 0; i < 4; i++) {
+            Member m = party[i];
+            g.blit(atlas.get("p:" + m.portrait), W / 2 - 88 + i * 44, cy + 70, ending == 2 ? 2 : 0, 0, 0, W, H);
+        }
+        g.textC("GRAVEBORNE", W / 2, cy + 128, Pal.GOLD, 2);
+        g.textC("THE END", W / 2, cy + 148, Pal.STONE7);
+        if (stateT > 3f) g.textC("TAP TO RETURN", W / 2, cy + 176, Pal.STONE8);
     }
+
 }

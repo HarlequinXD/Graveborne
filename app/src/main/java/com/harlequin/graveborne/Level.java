@@ -30,6 +30,24 @@ public final class Level {
     public final HashMap<Integer, String[]> exits = new HashMap<>();
     /** Text shown when you examine a cell: key y*w+x. */
     public final HashMap<Integer, String> notes = new HashMap<>();
+    /** Story: chapter number (roman) and title, shown as a card the first time you enter. */
+    public String chapterNum, chapterTitle;
+    /** Story scenes: key y*w+x -> pages, played once when you step onto the cell. */
+    public final HashMap<Integer, String[]> scenes = new HashMap<>();
+    /** Scene that plays when the chapter's boss falls. */
+    public String[] afterBoss;
+    /** Levers: key (y*w+x)*4+dir -> action words ("open tx ty" / "drain x0 y0 x1 y1"). */
+    public final HashMap<Integer, String[]> levers = new HashMap<>();
+    /** Siege: waves held back until the previous one is destroyed. */
+    public final ArrayList<Monster> waiting = new ArrayList<>();
+    public final HashMap<Integer, String> waveText = new HashMap<>();
+    public int wave = -1, waveX = -1, waveY = -1;
+    /** The final choice: using this cell asks seal or unmake. */
+    public int choiceX = -1, choiceY = -1;
+    /** Later chapters: the Wound's ordinary servants grow stronger. */
+    public int tough;
+    /** Floor chars with a roof over them (indoor rooms in an outdoor map). */
+    public final java.util.HashSet<Character> roofed = new java.util.HashSet<>();
     /** Named regions: name, music, step sound. */
     public final ArrayList<Area> areas = new ArrayList<>();
 
@@ -74,7 +92,10 @@ public final class Level {
                     break;
                 case "FLOOR":
                     lv.floorKinds.put(p[1].charAt(0), p[2]);
-                    if (p.length >= 4 && p[3].equals("block")) lv.blocked.add(p[1].charAt(0));
+                    for (int k = 3; k < p.length; k++) {
+                        if (p[k].equals("block")) lv.blocked.add(p[1].charAt(0));
+                        if (p[k].equals("roof")) lv.roofed.add(p[1].charAt(0));
+                    }
                     break;
                 case "EXIT": lv.pendingExit.add(p); break;
                 case "NOTE": lv.pendingNote.add(new String[]{p[1], p[2], line.split("\\s+", 4)[3]}); break;
@@ -88,6 +109,19 @@ public final class Level {
                     break;
                 }
                 case "NEXT": lv.next = p[1]; break;
+                case "CHAPTER": lv.chapterNum = p[1]; lv.chapterTitle = line.split("\\s+", 3)[2]; break;
+                case "SCENE": lv.pendingScene.add(new String[]{p[1], p[2], line.split("\\s+", 4)[3]}); break;
+                case "AFTERBOSS": lv.afterBoss = line.split("\\s+", 2)[1].split("\\|"); break;
+                case "LEVER": lv.pendingLever.add(p); break;
+                case "WAVES": lv.waveX = Integer.parseInt(p[1]); lv.waveY = Integer.parseInt(p[2]); break;
+                case "WAVETEXT": lv.waveText.put(Integer.parseInt(p[1]), line.split("\\s+", 3)[2]); break;
+                case "TOUGH": lv.tough = Integer.parseInt(p[1]); break;
+                case "CHOICE": lv.choiceX = Integer.parseInt(p[1]); lv.choiceY = Integer.parseInt(p[2]); break;
+                case "BOSS": {
+                    Monster m = new Monster(p[3], Integer.parseInt(p[1]), Integer.parseInt(p[2]));
+                    lv.monsters.add(m);
+                    break;
+                }
                 case "WALL": {
                     String[] k = new String[p.length - 2];
                     System.arraycopy(p, 2, k, 0, k.length);
@@ -113,9 +147,12 @@ public final class Level {
                 case "DECO":
                     lv.pendingDeco.add(p);
                     break;
-                case "MON":
-                    lv.monsters.add(new Monster(p[3], Integer.parseInt(p[1]), Integer.parseInt(p[2])));
+                case "MON": {
+                    Monster m = new Monster(p[3], Integer.parseInt(p[1]), Integer.parseInt(p[2]));
+                    if (p.length >= 5) m.wave = Integer.parseInt(p[4]);
+                    if (m.wave > 0) lv.waiting.add(m); else lv.monsters.add(m);
                     break;
+                }
                 case "ITEM":
                     lv.items.add(new Item(p[3], Integer.parseInt(p[1]), Integer.parseInt(p[2])));
                     break;
@@ -134,9 +171,29 @@ public final class Level {
             lv.setDeco(Integer.parseInt(p[1]), Integer.parseInt(p[2]), DIRS.indexOf(p[3].charAt(0)), p[4]);
         lv.pendingDeco.clear();
         for (String[] p : lv.pendingExit)
-            lv.exits.put(Integer.parseInt(p[2]) * lv.w + Integer.parseInt(p[1]), new String[]{p[3], p[4], p[5], p[6]});
+            lv.exits.put(Integer.parseInt(p[2]) * lv.w + Integer.parseInt(p[1]), new String[]{p[3], p[4], p[5], p[6], p.length > 7 ? p[7] : null});
         for (String[] p : lv.pendingNote)
             lv.notes.put(Integer.parseInt(p[1]) * lv.w + Integer.parseInt(p[0]), p[2]);
+        for (String[] p : lv.pendingScene)
+            lv.scenes.put(Integer.parseInt(p[1]) * lv.w + Integer.parseInt(p[0]), p[2].split("\\|"));
+        for (String[] p : lv.pendingLever) {
+            int x = Integer.parseInt(p[1]), y = Integer.parseInt(p[2]), d = DIRS.indexOf(p[3].charAt(0));
+            String[] act = new String[p.length - 4];
+            System.arraycopy(p, 4, act, 0, act.length);
+            lv.levers.put((y * lv.w + x) * 4 + d, act);
+            lv.setDeco(x, y, d, "lever");
+        }
+        if (lv.tough > 0) {
+            ArrayList<Monster> all = new ArrayList<>(lv.monsters);
+            all.addAll(lv.waiting);
+            for (Monster m : all) {
+                if (m.boss || m.npc()) continue;
+                float k = 1 + 0.35f * lv.tough;
+                m.maxHp = m.hp = Math.round(m.maxHp * k);
+                m.dmgMin += lv.tough; m.dmgMax += lv.tough * 2;
+                m.xp = Math.round(m.xp * k);
+            }
+        }
         if (lv.shrineKinds.isEmpty()) lv.shrineKinds.put(SHRINE, lv.shrineKind);
         return lv;
     }
@@ -144,6 +201,28 @@ public final class Level {
     private final ArrayList<String[]> pendingDeco = new ArrayList<>();
     private final ArrayList<String[]> pendingExit = new ArrayList<>();
     private final ArrayList<String[]> pendingNote = new ArrayList<>();
+    private final ArrayList<String[]> pendingScene = new ArrayList<>();
+    private final ArrayList<String[]> pendingLever = new ArrayList<>();
+
+    public String[] leverAt(int x, int y, int d) { return levers.get((y * w + x) * 4 + d); }
+
+    public boolean roofAt(int x, int y) { return !outdoor() || roofed.contains(at(x, y)); }
+
+    public Monster boss() {
+        for (Monster m : monsters) if (m.boss) return m;
+        return null;
+    }
+
+    public boolean bossAlive() {
+        for (Monster m : monsters) if (m.boss && m.alive()) return true;
+        return false;
+    }
+
+    public int hostilesAlive() {
+        int n = 0;
+        for (Monster m : monsters) if (!m.npc() && m.alive()) n++;
+        return n;
+    }
 
     public String[] exitAt(int x, int y) {
         if (x < 0 || y < 0 || x >= w || y >= h) return null;

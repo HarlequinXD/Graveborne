@@ -42,7 +42,7 @@ put(12, 11, "L")
 put(13, 5, "H")
 put(16, 5, "S")
 
-lines = ["# Graveborne floor 1: The Crypt", "NAME The Crypt", "THEME dungeon", "STAIRS exit", "NEXT level2.txt", "INTRO", "MAP"]
+lines = ["# Graveborne Chapter I: The Crypt", "CHAPTER I The Crypt", "NAME The Crypt", "THEME dungeon", "STAIRS exit", "NEXT level2.txt", "INTRO", "MAP"]
 lines += ["".join(r) for r in g]
 lines += ["END",
           "START 8 14 N",
@@ -85,6 +85,19 @@ lines += ["END",
           "PROP 2 14 coffin",
           "PROP 4 7 coffin",
           "ITEM 15 15 bones",
+          # ---- the story, on the cells where it happens
+          "SCENE 8 14 ALDRIC: WARDENS. SPEAK IF YOU CAN."
+          "|BRANN: NO HEARTBEAT. NO BREATH. BUT I'M THINKING. THAT'S NEW, FOR A CORPSE."
+          "|SERA: NOT NEW. WE'VE DONE THIS BEFORE. I CAN FEEL IT, LIKE A WORD ON THE TIP OF MY TONGUE."
+          "|VESH: THE MOON IS TURNING. I CAN FEEL IT THROUGH THE STONE. THE WOUND IS AWAKE."
+          "|ALDRIC: THEN SO ARE WE. FIND A WAY OUT.",
+          "SCENE 10 14 VESH: SOMETHING FEEDS IN THE DARK AHEAD. WE ARE NOT THE ONLY ONES THE WOUND WOKE.",
+          "SCENE 3 10 SERA: THE CRYPT-KEEPER'S ROOM. OLD MAREK KEPT OUR TOMB. LOOKS LIKE HE KEPT IT EVEN DEAD."
+          "|ALDRIC: HE CARRIED THE KEY TO THE INNER DOOR. FIND IT.",
+          "SCENE 8 2 BRANN: THAT SIGIL. SEVEN POINTS. I KNOW IT... I'VE CARVED IT SOMEWHERE."
+          "|SERA: ON YOUR OWN HEAD, YOU FOOL. YOU TOLD US IT WAS TO LEARN THE WOUND'S WAYS.",
+          "SCENE 13 6 ALDRIC: A GRAVE SHRINE. THE ORDER LEFT THESE FOR US. PRAY AT ONE, AND IF WE FALL, WE RISE THERE.",
+          "SCENE 15 6 VESH: STAIRS. MOONLIGHT ON THE STEPS.",
           ]
 open(sys.argv[1], "w").write("\n".join(lines) + "\n")
 

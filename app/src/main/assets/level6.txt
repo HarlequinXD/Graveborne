@@ -1,0 +1,68 @@
+# Graveborne Chapter VI: The Drowned Barrow
+CHAPTER VI The Drowned Barrow
+NAME The Drowned Barrow
+THEME forest
+TOUGH 2
+WALL # tree tree2 tree3
+WALL b barrow
+WALL Q pdoor
+FLOOR , path
+FLOOR ~ water block
+FLOOR ; barrowfloor roof
+FLOOR w water block roof
+SHRINE H shrine
+MAP
+#######################
+#bbbbbbbbbbbbbbbbbbbbb#
+#bbb;;;;;;wwww;;;;;;;b#
+#bbb;;;;;;bbbb;;;;;;;Q#
+#bbbbbwbbbbbbb;;;;;;;b#
+#bbbbbwbbbbbbb;;;;;;;b#
+#bbbbbwbbbbbbbbbbbbbbb#
+#bbbb;;;;;;;;;;;;;;;;b#
+#bbbb;;;;;;;;;;;;;;;;b#
+#bbbbbbbbbbb;bbbbbbbbb#
+#bbbbbbbbbbb;bbbbbbbbb#
+#bbbbbbbbbbb;bbbbbbbbb#
+#bbbbbbbbbbb;bbbbbbbbb#
+#bbbbbbbbbbH;bbbbbbbbb#
+#...........,.........#
+#...~~~.....,.#..~~~..#
+#...~~~....,,....~~~..#
+#...~~~....,..........#
+#......#...,~~........#
+#..#.,,,,,,,~~.~~~~.#.#
+#....,..~~~....~~~~...#
+#,,,,,..~~~....~~~~...#
+#.......~~~...........#
+#######################
+END
+START 2 21 E
+EXIT 21 3 level7.txt 2 2 S boss+stone
+LEVER 21 7 W drain 6 4 6 6 ;
+LEVER 3 2 E drain 10 2 13 2 ;
+MON 8 19 ghoul
+MON 14 17 ghoul
+MON 18 18 hound
+MON 3 15 ghoul
+MON 9 8 skeleton
+MON 17 7 ghoul
+MON 19 8 skeleton
+MON 7 3 ghoul
+MON 5 2 wraith
+BOSS 17 3 drowned
+ITEM 20 5 stone
+ITEM 20 14 potion
+ITEM 5 8 potion
+ITEM 9 2 potion
+ITEM 2 16 potion
+PROP 7 15 grave
+PROP 16 14 grave
+PROP 10 7 coffin
+PROP 15 8 coffin
+SCENE 2 21 The mire stinks of rot and still water. Pale lights drift over the pools.|SERA: I HELD THE LINE AT THE BARROW MOUTH WHILE THE OTHERS WENT DOWN. SHIELDS LOCKED. NOTHING GOT PAST ME.|BRANN: AND THEN?|SERA: AND THEN I DON'T REMEMBER.
+SCENE 12 14 SERA: HERE. THIS IS WHERE I STOOD.|ALDRIC: THERE'S A SHRINE CUT INTO THE MOUND, JUST BESIDE THE MOUTH.
+SCENE 6 7 Black water fills the passage north. Somewhere along the hall, old sluice gates creak.|BRANN: THE BARROW-BUILDERS FLOODED THEIR OWN HALLS. THERE'LL BE A LEVER TO DRAIN THEM.
+SCENE 13 2 THE DROWNED KNIGHT: ...SPEARWARDEN. YOU HELD THE MOUTH AGAINST US. WE REMEMBER YOU.|SERA: THE BARROW KINGS' GUARD. I PUT YOU IN THE WATER MYSELF.|THE DROWNED KNIGHT: AND THE WATER GAVE US BACK.
+AFTERBOSS The Drowned Knight sinks to his knees, and the water takes him again.
+SCENE 20 5 SERA: I REMEMBER NOW. THE OTHERS WENT DOWN, AND ALDRIC WENT ON ALONE INTO THE DARK. HE WAS GONE A LONG TIME.|SERA: WHEN HE CAME BACK HE HAD THAT RIBBON ON HIS HELM. VIOLET. AND THE DEAD STOPPED COMING.|ALDRIC: I... DON'T REMEMBER ANY OF THAT.|BRANN: THE MINES NEXT. MY STONE. MAYBE IT REMEMBERS FOR YOU.

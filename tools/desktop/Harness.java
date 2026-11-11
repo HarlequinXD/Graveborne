@@ -32,6 +32,12 @@ public class Harness {
             if (s.startsWith("wait:")) run(g, Float.parseFloat(s.substring(5)));
             else if (s.startsWith("shot:")) { g.render(); save(g, new File(out, s.substring(5) + ".png")); }
             else if (s.startsWith("mid:")) { run(g, 0.09f); g.render(); save(g, new File(out, s.substring(4) + ".png")); }
+            else if (s.equals("god")) { for (Member m : g.party) { m.maxHp = m.hp = 5000; m.dmgMin += 30; m.dmgMax += 30; } }
+            else if (s.startsWith("fight:")) { int n = Integer.parseInt(s.substring(6)); for (int k = 0; k < n; k++) { for (int q = 0; q < 4; q++) g.input(Game.ACT_ATTACK0 + q); run(g, 0.5f); } }
+            else if (s.equals("page")) { for (int k = 0; k < 40; k++) { run(g, 0.3f); g.input(Game.ACT_USE); } }
+            else if (s.startsWith("at:")) { String[] p = s.substring(3).split(","); g.debugAt(Integer.parseInt(p[0]), Integer.parseInt(p[1]), Integer.parseInt(p[2])); }
+            else if (s.equals("stones")) g.debugStones(4);
+            else if (s.equals("info")) System.out.println(g.debugLevel() + " pos " + g.px + "," + g.py);
             else if (s.startsWith("go:")) { String[] p = s.substring(3).split(","); g.debugGo(p[0], Integer.parseInt(p[1]), Integer.parseInt(p[2]), Integer.parseInt(p[3])); }
             else if (s.startsWith("tp:")) { String[] p = s.substring(3).split(","); g.px = Integer.parseInt(p[0]); g.py = Integer.parseInt(p[1]); g.dir = Integer.parseInt(p[2]); }
             else if (s.equals("dbg")) { System.out.println("pos " + g.px + "," + g.py + " dir " + g.dir + " cellAhead " + g.lv.at(g.px + Level.DX[g.dir], g.py + Level.DY[g.dir])); }

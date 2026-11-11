@@ -1,0 +1,36 @@
+# Graveborne Chapter XI: The Wound
+CHAPTER XI The Wound
+NAME The Wound
+THEME dungeon
+TOUGH 4
+WALL # wound
+WALL W wound
+FLOOR . woundfloor
+MAP
+###############
+#######W#######
+##...........##
+##.#.......#.##
+##...........##
+##...........##
+##...........##
+##...........##
+##.#.......#.##
+##...........##
+#######.#######
+#######.#######
+#######.H######
+#######.#######
+#######.#######
+###############
+END
+START 7 14 N
+CHOICE 7 1
+BOSS 7 3 heart
+MON 4 6 wraith
+MON 10 6 wraith
+ITEM 7 13 potion
+ITEM 7 11 potion
+SCENE 7 14 Violet light beats in the rock like a pulse. The walls are warm to the touch.|VESH: IT KNOWS WE'RE COMING.|SERA: GOOD.
+SCENE 7 9 THE HEART OF THE WOUND: ALDRIC.|The voice is Aldric's own.|THE HEART OF THE WOUND: YOU KNOW THIS VOICE. YOU GAVE IT TO ME, DOWN HERE, WHEN YOU WERE AFRAID.|THE HEART OF THE WOUND: SEAL ME. SLEEP. RISE AGAIN. HOLLOWMERE LIVES, AND YOU NEVER TRULY DIE. IS THAT NOT WHAT YOU WANTED?|BRANN: DON'T LISTEN TO IT.|ALDRIC: I'M NOT. NOT THIS TIME.
+AFTERBOSS The Heart tears and falls still. Behind it the Wound still gapes in the rock, waiting for the old words.|ALDRIC: THE WOUND. ALL FOUR STONES. WE CHOOSE NOW.

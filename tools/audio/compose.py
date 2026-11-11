@@ -222,7 +222,48 @@ def death():
     return soft_clip(normalize(mix, 0.95)) * 0.9
 
 
-TRACKS = {"title": title, "dungeon": dungeon, "forest": forest, "town": town, "death": death}
+def boss():
+    """Chapter bosses: driving low strings, timpani and choir stabs in D minor."""
+    tr = Track(132, 16)
+    prog = ["Dm", "Dm", "Bb", "C", "Dm", "Dm", "Gm", "A", "Dm", "Bb", "Gm", "A", "Bb", "C", "A", "A"]
+    for bar, c in enumerate(prog):
+        b = bar * 4
+        notes = chord(c, 2)
+        for k in range(8):                      # ostinato
+            m = notes[0] if k % 4 != 3 else notes[2]
+            tr.note(strings, m, b + k * 0.5, 0.45, 0.32, -0.2, 0.3, bright=1600)
+            tr.note(cello, m - 12, b + k * 0.5, 0.45, 0.22, 0.2, 0.3)
+        tr.note(timpani, notes[0] - 12, b, 1.0, 0.5, 0, 0.4)
+        tr.note(timpani, notes[0] - 12, b + 2, 1.0, 0.35, 0, 0.4)
+        if bar % 2 == 1:
+            tr.note(timpani, notes[0] - 12, b + 3.5, 0.5, 0.3, 0, 0.4)
+        if bar % 4 == 0:
+            for k, m in enumerate(chord(c, 4)):
+                tr.note(choir, m, b, 1.6, 0.18, -0.4 + 0.4 * k, 0.6, vowel="ah")
+    mel = [("D5", 2), ("A4", 2), ("F5", 2), ("E5", 1), ("D5", 1), ("C5", 3), ("A4", 1), ("D5", 4),
+           ("F5", 2), ("G5", 2), ("A5", 3), ("G5", 1), ("F5", 2), ("E5", 2), ("C#5", 4)]
+    melody(tr, strings, mel, 32, 0.22, 0.1, 0.5)
+    return tr.render(size=1.0, wet=0.45)
+
+
+def ending():
+    """After the Wound: slow choir and flute, the curse lifting."""
+    tr = Track(60, 16)
+    prog = ["D", "A", "Bm", "G", "D", "G", "A", "D", "Bm", "G", "D", "A", "G", "A", "D", "D"]
+    for bar, c in enumerate(prog):
+        b = bar * 4
+        for k, m in enumerate(chord(c, 3)):
+            tr.note(choir, m + 12, b, 4.4, 0.18, -0.4 + 0.4 * k, 0.7, vowel="oo")
+        tr.note(cello, chord(c, 3)[0] - 12, b, 4.0, 0.3, 0, 0.4)
+        arp(tr, chord(c, 3), b, 4, step=1.0, pattern=(0, 1, 2, 1), gain=0.1, p=0.3)
+    mel = [("F#5", 3), ("E5", 1), ("D5", 4), ("A4", 2), ("B4", 2), ("C#5", 4), ("D5", 3), ("E5", 1), ("F#5", 2), ("A5", 2), ("G5", 4), ("F#5", 4),
+           ("E5", 2), ("D5", 2), ("B4", 4), ("A4", 4), ("B4", 2), ("C#5", 2), ("D5", 8)]
+    melody(tr, flute, mel, 8, 0.2, 0.1, 0.6)
+    tr.note(bell, n("D5"), 0, 8, 0.2, -0.2, 0.8)
+    return tr.render(size=1.4, wet=0.65)
+
+
+TRACKS = {"boss": boss, "ending": ending, "title": title, "dungeon": dungeon, "forest": forest, "town": town, "death": death}
 
 if __name__ == "__main__":
     out = sys.argv[1]

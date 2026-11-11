@@ -1,0 +1,72 @@
+# Graveborne Chapter V: The Hanged Watch
+CHAPTER V The Hanged Watch
+NAME The Hanged Watch
+THEME forest
+TOUGH 1
+WALL # tree tree2 tree3
+WALL r cliff
+WALL P prison prisonwin prison
+WALL Q pdoor
+WALL X prison
+FLOOR , path
+FLOOR ; floor
+MAP
+rrrrrrrrrrrrrrrrrrrrrrrrr
+rrrrrrrrrrrrrrrrrrrrrrrrr
+rrrrrrPPPPPPQPPPPPPrrrrrr
+rrrrrrPPP;;;;;;;PPPrrrrrr
+rrrrrrPPP;;;;;;;PPPrrrrrr
+rrrrrrPPP;;;;;;;PPPrrrrrr
+rrrrrrPPPPPPXPPPPPPrrrrrr
+rrrrrrP;;;;;;;;;;;Prrrrrr
+rrrrrrP;;;;;;;;;;;Prrrrrr
+rrrrrrP;;;;;;;;;;;Prrrrrr
+rrrrrrP;;;;;;;;;;;Prrrrrr
+rrrrrrP;;;;;;;;;;;Prrrrrr
+rrrrrrPPPPPP;PPPPPPrrrrrr
+rrHrrrrrrrrr,rrrrrrrrrrrr
+rr..........,..........rr
+rr..rr..#...,.r........rr
+rr....,,,,,,,........r.rr
+rr....,................rr
+rr....,.........r......rr
+rr....,............#...rr
+rr....,,,,,,,..........rr
+rr..........,..........rr
+rr.r........,.......r..rr
+rr.......r..,.....#....rr
+rr..........,..........rr
+rrrrrrrrrrrrrrrrrrrrrrrrr
+END
+START 12 24 N
+EXIT 12 2 level6.txt 2 21 E boss+stone
+LEVER 18 9 W open 12 6
+PROP 6 18 hanged
+PROP 7 21 hanged
+PROP 11 17 hanged
+PROP 13 14 hanged
+PROP 8 8 hanged
+PROP 16 8 hanged
+PROP 9 4 hanged
+PROP 15 4 hanged
+MON 9 20 hound
+MON 5 17 hound
+MON 12 15 skeleton
+MON 17 21 skeleton
+MON 9 10 skeleton
+MON 15 10 skeleton
+MON 14 9 skeleton
+MON 10 8 hound
+BOSS 12 4 captain
+ITEM 12 3 stone
+ITEM 3 23 potion
+ITEM 17 11 potion
+ITEM 20 14 potion
+ITEM 7 7 potion
+SHRINE H shrine
+SCENE 12 24 The moor road climbs into a cold wind. On the ridge stands the Hanged Watch, a broken tower with shapes swinging from its walls.|VESH: MY FIRST POST. I WAS FOURTEEN. I LEARNED TO SHOOT FROM THOSE WALLS.|BRANN: LOOKS LIKE THE TOWN FOUND ANOTHER USE FOR THEM.
+SCENE 6 19 SERA: THE TOWN HANGED THE RISEN FROM THE WATCH, THE LAST TIME. THEY'RE STILL MOVING.|ALDRIC: THERE'S A GRAVE SHRINE IN THE ROCKS TO THE WEST. PRAY THERE BEFORE THE TOWER.
+SCENE 12 11 VESH: THE INNER DOOR IS WINCHED SHUT. THERE'S A LEVER ON THE EAST WALL. I USED TO HAUL IT FOR THE CAPTAIN.
+SCENE 12 6 THE HANGED CAPTAIN: VESH. MY BEST BOY. YOU LEFT YOUR POST.|VESH: CAPTAIN ORREN. I'M SORRY.|THE HANGED CAPTAIN: THEY HANGED ME FROM MY OWN TOWER. NOW I KEEP THE WATCH FOREVER. STAND YOUR POST, BOY. FOREVER.
+AFTERBOSS The Captain's rope goes slack at last.|VESH: REST, CAPTAIN. I'LL TAKE THE WATCH FROM HERE.
+SCENE 12 3 Vesh closes his hand around the Oath-stone. A memory comes back with it, sharp as a bolt.|VESH: THE BARROWS. THE FIRST TIME. WE WERE LOSING. ALL FOUR OF US WERE GOING TO DIE DOWN THERE, WITH THE WOUND STILL OPEN.|ALDRIC: BUT WE SEALED IT.|VESH: DID WE? I DON'T REMEMBER HOW.|SERA: THE BARROW IN THE MIRE IS NEXT. THAT ONE IS MINE. THE POSTERN DOOR LEADS DOWN THE FAR SIDE OF THE RIDGE.

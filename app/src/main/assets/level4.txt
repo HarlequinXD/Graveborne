@@ -1,0 +1,65 @@
+# Graveborne Chapter IV: The Chapel Undercroft
+CHAPTER IV The Chapel Undercroft
+NAME The Chapel Undercroft
+THEME dungeon
+STAIRS stairs
+TOUGH 1
+MAP
+######################
+#######....###########
+#######....###########
+#######....###########
+########D#############
+##.............L..####
+##.##############.####
+##.##############.####
+##.##############.####
+##.##############.####
+##.########..........#
+##.########..........#
+##.########..........#
+#....######..........#
+#....#....#..........S
+#....D....#..........#
+#....#....#..........#
+#....#....#..........#
+##S########..........#
+######################
+END
+START 2 17 N
+NOTE 2 18 THE STAIR UP TO THE CHAPEL. YOU HAVE WORK DOWN HERE.
+EXIT 21 14 level5.txt 12 24 N boss+letter
+DECO 1 12 E loculi
+DECO 3 12 W loculi
+DECO 1 9 E ossuary
+DECO 3 8 W loculi
+DECO 5 6 N sconce
+DECO 11 6 N sconce
+DECO 10 2 W ossuary
+DECO 9 18 N loculi
+DECO 11 9 S sigil
+DECO 18 9 S sconce
+DECO 13 19 N loculi
+DECO 21 11 W ossuary
+MON 3 14 skeleton
+MON 2 7 skeleton
+MON 8 15 ghoul
+MON 9 2 ghoul
+MON 12 5 wraith
+MON 17 7 skeleton
+BOSS 16 14 sexton
+ITEM 7 16 key
+ITEM 8 1 potion
+ITEM 6 17 potion
+ITEM 19 17 letter
+ITEM 12 17 potion
+PROP 13 11 bell
+PROP 4 16 coffin
+PROP 9 14 coffin
+PROP 19 11 coffin
+SCENE 2 17 The undercroft smells of lime and old bones. Somewhere below, a bell tolls. Once. Twice.|VESH: NO ONE HAS RUNG A BURIAL BELL IN THIS TOWN FOR A GENERATION.|BRANN: SOMEONE'S RINGING IT NOW.
+SCENE 7 16 SERA: THE SEXTON'S KEY. HE KEPT EVERY DOOR DOWN HERE LOCKED, EVEN FROM THE DEAD.
+SCENE 14 5 Beyond an iron door, the bell is louder. Each toll shakes dust from the vaults.
+SCENE 17 9 THE SEXTON: ANOTHER BURIAL? GOOD. GOOD. THE BELL MUST RING FOR EVERY ONE. EVERY ONE.|ALDRIC: HE DIED AT HIS POST, AND HE NEVER STOPPED RINGING.|THE SEXTON: THE DEAD COME WHEN I RING. COME DOWN, LITTLE WARDENS. LIE DOWN.
+AFTERBOSS The Sexton's bell cracks on the flagstones. For the first time in a generation, the undercroft is silent.|VESH: THERE, ON THE BIER IN THE CORNER. SEALED PAGES, UNDER WAX.
+SCENE 19 17 The abbot's hand, shaking, two hundred years old:|"TO THE FOUR, IF YOU RISE AND FIND THIS. I HID YOUR OATH-STONES. FORGIVE ME, THOUGH I DO NOT DESERVE IT."|"THE WOUND CAN BE UNMADE, NOT ONLY SEALED. FOUR MUST BREAK THE OATHS THEY SWORE, UPON THE STONES THEY SWORE THEM ON."|"I PUT EACH STONE WHERE ITS WARDEN FIRST BLED FOR HOLLOWMERE: THE WATCHTOWER ON THE MOOR. THE BARROW IN THE MIRE. THE DEEP MINES. OUR OWN KEEP."|SERA: WHY WOULD THE ABBOT HIDE THEM FROM US?|ALDRIC: ...I DON'T KNOW.|VESH: THE WATCHTOWER FIRST. I STOOD GUARD THERE AS A BOY. THE OLD BELL STAIR COMES OUT ON THE MOOR ROAD.

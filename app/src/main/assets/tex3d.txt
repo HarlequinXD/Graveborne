@@ -33,6 +33,13 @@ inn
 chapel
 exit
 cliff
+mine
+bonewall
+barrow
+keep
+wound
+woundfloor
+barrowfloor
 floor
 ceil
 grass

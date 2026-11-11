@@ -324,7 +324,7 @@ public final class Renderer3D {
                 vtx(2, x + 1, 0, y, 1, 0, -0.5f); vtx(3, x, 0, y, 0, 0, -0.5f);
                 String fk = lv.floorKind(x, y);
                 quad(fk != null ? tid(fk) : floorT, 0);
-                if (!outdoor) {
+                if (!outdoor || lv.roofAt(x, y)) {
                     vtx(0, x, 1, y, 0, 0, -1.9f); vtx(1, x + 1, 1, y, 1, 0, -1.9f);
                     vtx(2, x + 1, 1, y + 1, 1, 1, -1.9f); vtx(3, x, 1, y + 1, 0, 1, -1.9f);
                     quad(ceilT, 0);

@@ -1,0 +1,70 @@
+# Graveborne Chapter X: The Barrows of the First Kings
+CHAPTER X The Barrows of the First Kings
+NAME The Barrows of the First Kings
+THEME dungeon
+TOUGH 4
+STAIRS stairs
+WALL # barrow
+WALL X barrow
+FLOOR . barrowfloor
+MAP
+############S###########
+#######...........######
+##....#...........#....#
+##....#...........#....#
+##....#...........#....#
+##.####...........##.###
+##.#########X#######.###
+##.######.......####.###
+##.######.......####.###
+##...####.......####.###
+####.####.......####.###
+####.#######X#######.###
+####.................###
+####.................###
+####.................###
+####.................###
+############.###########
+############.###########
+############.###########
+############.###########
+#########.#.....########
+#########.......########
+#########.......########
+#########.......########
+#########..H....########
+########################
+END
+START 12 23 N
+EXIT 12 0 level11.txt 7 14 N boss
+LEVER 1 3 E open 12 11
+LEVER 23 3 W open 12 6
+MON 6 13 skeleton
+MON 18 14 skeleton
+MON 9 14 skeleton
+MON 15 13 skeleton
+MON 2 6 wraith
+MON 4 3 skeleton
+MON 20 7 ghoul
+MON 21 3 skeleton
+MON 10 8 skeleton
+MON 14 8 skeleton
+BOSS 12 2 hrodmar
+ITEM 2 2 potion
+ITEM 22 2 potion
+ITEM 15 23 potion
+ITEM 9 7 potion
+PROP 6 12 coffin
+PROP 10 12 coffin
+PROP 14 12 coffin
+PROP 18 12 coffin
+PROP 8 1 coffin
+PROP 16 1 coffin
+DECO 12 0 S sigil
+SCENE 12 23 The barrow gate grinds shut behind you. You have been here before. Every time.|SERA: THIS IS THE MOUTH. I STOOD RIGHT HERE, SHIELD UP, SPEAR OUT. I REMEMBER THE WEIGHT OF THEM.|ALDRIC: THERE'S A SHRINE IN THE WALL. THE ORDER BUILT IT FOR OUR LAST NIGHT. PRAY.
+SCENE 12 15 The first kings of Hollowmere lie in their stone beds. Their honour guard does not.|BRANN: THE WAY ON IS SEALED. SAME AS LAST TIME. VESH FOUND ONE WAY THROUGH, I BROKE THE OTHER.
+SCENE 3 3 VESH: MY LEDGES. I FOUND THE WINCH UP HERE THE FIRST TIME, AND CAME BACK TO GUIDE YOU.
+SCENE 20 3 BRANN: AND HERE'S THE SEAM I BROKE TO LET US THROUGH. SAME CRACK. SAME ROCK. TWO HUNDRED YEARS.
+SCENE 12 7 ALDRIC: BEYOND THAT GATE IS WHERE I WENT ON ALONE. INTO THE DARK. AND CAME BACK SOMETHING ELSE.
+SCENE 12 5 KING HRODMAR: THE WARDENS. MY JAILERS. EVERY TIME YOU SEAL IT, I SLEEP. EVERY TIME IT WAKES, SO DO I.|KING HRODMAR: I WAS THE FIRST IT RAISED. I WILL BE THE LAST STANDING.
+AFTERBOSS King Hrodmar falls, and his honour guard fall with him. Behind the throne, steps lead down into violet light.

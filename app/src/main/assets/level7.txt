@@ -1,0 +1,60 @@
+# Graveborne Chapter VII: The Ossuary Mines
+CHAPTER VII The Ossuary Mines
+NAME The Ossuary Mines
+THEME dungeon
+TOUGH 2
+STAIRS stairs
+WALL # mine mine bonewall mine bonewall
+FLOOR , path
+MAP
+########################
+########################
+##,#######,,,,,,########
+##,#######,,,,,,########
+#H,#######,,,,,,########
+##,#########,###########
+##,#########,###########
+##,#########,###########
+##,#########,###########
+##,#########,###########
+##,,,,,,,,,,,,,,,,,L,###
+######,#############,###
+######,#############,###
+######,#############,###
+######,#############,###
+######,###,,,,,,,,,,,,##
+####,,,,,#,,,,,,,,,,,,##
+####,,,,,#,,,,,,,,,,,,##
+####,,,,,#,,,,,,,,,,,,S#
+##########,,,,,,,,,,,,##
+##########,,,,,,,,,,,,##
+##########,,,,,,,,,,,,##
+########################
+########################
+END
+START 2 2 S
+EXIT 22 18 level8.txt 12 22 N boss+stone
+MON 2 8 skeleton
+MON 8 10 skeleton
+MON 6 14 ghoul
+MON 5 17 ghoul
+MON 7 17 skeleton
+MON 12 6 wraith
+MON 14 3 skeleton
+MON 16 10 ghoul
+MON 20 13 skeleton
+BOSS 15 18 colossus
+ITEM 8 16 key
+ITEM 11 3 potion
+ITEM 4 18 potion
+ITEM 10 21 potion
+ITEM 21 15 potion
+ITEM 20 20 stone
+ITEM 14 4 bones
+ITEM 13 20 bones
+DECO 21 16 E sigil
+SCENE 2 2 The barrow-breakers' mines. When the town stopped burying its dead, it dug up the old graveyards and packed the bones down here.|BRANN: I WORKED THESE SEAMS BEFORE I TOOK THE OATH. BREAKING BARROWS FOR THE KING'S GOLD.|BRANN: IN THE DEEPEST SEAM THERE WERE CARVINGS. THAT'S WHERE I LEARNED THE SIGIL.|VESH: A SHRINE IN THE SHAFT WALL. THE ORDER KNEW WE'D COME THIS WAY.
+SCENE 8 16 SERA: THE FOREMAN'S KEY, ON A HOOK BY THE BONES. THE DEEP SEAM WAS ALWAYS LOCKED.
+SCENE 20 14 The bone heaps shift. Something stands up out of them: ten thousand bones, one body.|BRANN: THE WOUND BUILT ITSELF A CHAMPION OUT OF HOLLOWMERE'S GRANDMOTHERS.
+AFTERBOSS The Colossus comes apart in an avalanche of bone.
+SCENE 20 20 Carved into the seam wall above the Oath-stone is the seven-pointed sigil, the same one on Brann's scalp.|BRANN: I THOUGHT I CUT THIS INTO MY SKIN TO LEARN THE WOUND'S WAYS. I WAS WRONG.|BRANN: IT'S A CONTRACT MARK. A SIGNATURE. AND THAT RIBBON ON YOUR HELM, ALDRIC, IS THE SAME MARK IN SILK.|ALDRIC: ...THE KEEP. WHATEVER THIS IS, THE ABBOT KNEW. IT ENDS AT THE KEEP.

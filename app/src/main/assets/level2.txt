@@ -7,7 +7,6 @@ WALL Q pdoor
 WALL F palisade
 STAIRS towngate
 SHRINE shrine
-NEXT level3.txt
 MAP
 PPPPPPPPPPPPPPP###########
 PPPPPPPPPPPPPPP###########
@@ -38,6 +37,8 @@ PPPPPPPQPPPPPPP###########
 ##########################
 END
 START 7 4 S
+EXIT 7 3 level1.txt 16 6 S
+EXIT 22 24 vale.txt 40 19 S
 PROP 3 5 grave
 PROP 5 6 grave
 PROP 9 6 grave

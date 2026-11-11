@@ -1,4 +1,5 @@
-"""Builds floor 2 (prison grounds + the Ashen Wood) and floor 3 (the town of Hollowmere).
+"""Builds floor 2: the graveyard and the Ashen Wood trail, the last linear stretch before Hollowmere.
+(The town and the open vale around it are built by tools/vale.py.)
 
   python3 tools/levels_out.py app/src/main/assets [preview_dir]
 """
@@ -52,9 +53,11 @@ def level2():
              "WALL P prison",
              "WALL Q pdoor",
              "WALL F palisade",
-             "STAIRS towngate", "SHRINE shrine", "NEXT level3.txt",
+             "STAIRS towngate", "SHRINE shrine",
              "MAP"] + m.rows() + ["END",
              "START 7 4 S",
+             "EXIT 7 3 level1.txt 16 6 S",
+             "EXIT 22 24 vale.txt 40 19 S",
              "PROP 3 5 grave", "PROP 5 6 grave", "PROP 9 6 grave", "PROP 11 5 grave", "PROP 6 7 grave", "PROP 8 7 grave",
              "PROP 3 7 grave", "PROP 11 7 grave", "PROP 4 8 grave", "PROP 10 8 grave",
              "MON 7 12 hound", "MON 3 17 hound", "MON 13 17 wraith", "MON 18 16 skeleton",
@@ -64,37 +67,9 @@ def level2():
     return m, lines
 
 
-def level3():
-    m = Grid(17, 17, "#")
-    for i in range(17):
-        m.put(i, 0, "F"); m.put(i, 16, "F"); m.put(0, i, "F"); m.put(16, i, "F")
-    m.room(8, 9, 8, 15)         # main street from the gate
-    m.room(5, 4, 11, 8)         # square
-    m.room(2, 6, 14, 6)         # cross street
-    m.room(2, 2, 2, 10); m.room(14, 2, 14, 10)
-    m.room(2, 2, 14, 2)         # north lane
-    m.room(2, 10, 5, 10); m.room(11, 10, 14, 10)
-    m.put(8, 3, "C")            # chapel
-    m.put(11, 9, "H")           # the inn: rest here
-    m.put(8, 16, "G")           # town gate behind you
-    lines = ["# Graveborne floor 3: the town of Hollowmere",
-             "NAME Hollowmere", "THEME town",
-             "WALL # house house2 house house2",
-             "WALL C chapel", "WALL F palisade", "WALL G towngate",
-             "SHRINE inn", "STAIRS chapel",
-             "MAP"] + m.rows() + ["END",
-             "START 8 15 N",
-             "NPC 8 13 guard HALT! THOSE EYES... YOU CAME OUT OF THE WARDENS' CRYPT.|THE OLD SONGS SAY FOUR RISE FROM THAT TOMB WHEN THE MOON TURNS VIOLET. I NEVER BELIEVED THEM.|SEE THE PRIEST BY THE CHAPEL. SHE KNOWS THE SONGS, AND WHAT DIGS BENEATH HOLLOWMERE.",
-             "NPC 10 8 innkeeper DEAD OR NOT, COIN IS COIN. BUT TONIGHT REST IS FREE.|TAP THE INN DOOR BESIDE ME TO REST. THE CURSE CANNOT FOLLOW YOU INSIDE.",
-             "NPC 9 4 priest FOUR WHO SHOULD BE DUST. THE CURSE CHOSE WELL.|IT BLEEDS UP FROM THE BARROWS BELOW MY CHAPEL, A WOUND THAT NEVER CLOSES.|REST, RISEN ONES. WHEN THE CRYPT DOOR OPENS, YOU MUST GO DOWN.",
-             "PROP 8 6 well", "PROP 5 4 lamppost", "PROP 11 4 lamppost", "PROP 5 8 lamppost",
-             "DECO 2 1 S chains"]
-    return m, [l for l in lines if not l.startswith("DECO")]
-
-
 if __name__ == "__main__":
     out = sys.argv[1]
-    for name, (m, lines) in (("level2.txt", level2()), ("level3.txt", level3())):
+    for name, (m, lines) in (("level2.txt", level2()),):
         open(os.path.join(out, name), "w").write("\n".join(lines) + "\n")
         print(name); print("\n".join(m.rows()))
         if len(sys.argv) > 2:

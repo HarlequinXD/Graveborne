@@ -32,6 +32,7 @@ public class Harness {
             if (s.startsWith("wait:")) run(g, Float.parseFloat(s.substring(5)));
             else if (s.startsWith("shot:")) { g.render(); save(g, new File(out, s.substring(5) + ".png")); }
             else if (s.startsWith("mid:")) { run(g, 0.09f); g.render(); save(g, new File(out, s.substring(4) + ".png")); }
+            else if (s.startsWith("go:")) { String[] p = s.substring(3).split(","); g.debugGo(p[0], Integer.parseInt(p[1]), Integer.parseInt(p[2]), Integer.parseInt(p[3])); }
             else if (s.startsWith("tp:")) { String[] p = s.substring(3).split(","); g.px = Integer.parseInt(p[0]); g.py = Integer.parseInt(p[1]); g.dir = Integer.parseInt(p[2]); }
             else if (s.equals("dbg")) { System.out.println("pos " + g.px + "," + g.py + " dir " + g.dir + " cellAhead " + g.lv.at(g.px + Level.DX[g.dir], g.py + Level.DY[g.dir])); }
             else if (s.startsWith("tap:")) { String[] p = s.substring(4).split(","); g.tap(Integer.parseInt(p[0]), Integer.parseInt(p[1])); run(g, 0.05f); }

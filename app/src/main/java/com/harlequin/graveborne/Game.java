@@ -29,6 +29,11 @@ public final class Game {
     private float time, stateT;
     private boolean showMap;
     private int cpX, cpY, cpDir;
+    private String cpFile;
+    /** Every map visited this game, kept as you left it (dead stay dead, doors stay open). */
+    private final java.util.HashMap<String, Level> world = new java.util.HashMap<>();
+    private Level.Area area;
+    private String banner = "";
 
     // ---- movement animation
     private static final int A_NONE = 0, A_FWD = 1, A_BACK = 2, A_STRAFE = 3, A_TURN = 4, A_BUMP = 5;
@@ -89,6 +94,7 @@ public final class Game {
         party = Member.party();
         keys = 0; potions = 1; xp = 0; plevel = 1;
         log.clear();
+        world.clear();
         loadLevel("level1.txt");
         if (lv.intro) {
             intro = 0; introT = 0;
@@ -104,10 +110,21 @@ public final class Game {
 
     private String levelFile;
 
-    private void loadLevel(String file) {
+    private void loadLevel(String file) { loadLevel(file, -1, -1, -1); }
+
+    /** Enter a map (from cache if visited before), at its start or at (tx, ty) facing tdir. */
+    /** Test hook: jump straight to a map (skips the intro). */
+    public void debugGo(String file, int tx, int ty, int tdir) { intro = 3; state = PLAY; loadLevel(file, tx, ty, tdir); }
+
+    private void loadLevel(String file, int tx, int ty, int tdir) {
         levelFile = file;
-        lv = Level.parse(loader.text(file));
-        px = cpX = lv.startX; py = cpY = lv.startY; dir = cpDir = lv.startDir;
+        lv = world.get(file);
+        if (lv == null) { lv = Level.parse(loader.text(file)); world.put(file, lv); }
+        if (tx < 0) { px = lv.startX; py = lv.startY; dir = lv.startDir; }
+        else { px = tx; py = ty; dir = tdir; }
+        cpX = px; cpY = py; cpDir = dir; cpFile = file;
+        area = null;
+        banner = lv.name;
         floaters.clear(); queue.clear();
         anim = A_NONE; secretT = -1; switchPressed = false; hintsGiven = 0; idleHintT = 0; showMap = false;
         secretX = secretY = -1;
@@ -117,11 +134,39 @@ public final class Game {
         dist = null;
         markSeen();
         if (state == PLAY) audio.music(lv.theme);
+        checkArea(false);
     }
 
     private String stepSound() {
+        if (area != null) return area.step;
         return lv.theme.equals("forest") ? "step_grass" : lv.theme.equals("town") ? "step_cobble" : "step_stone";
     }
+
+    /** Entering a named region shows its name and changes the music. */
+    private void checkArea(boolean announce) {
+        Level.Area a = lv.areaAt(px, py);
+        if (a == null || a == area) return;
+        area = a;
+        banner = a.name;
+        bannerT = 2.6f;
+        if (state == PLAY) audio.music(a.music);
+    }
+
+    private void travel(String[] ex) {
+        String file = ex[0];
+        int tx = Integer.parseInt(ex[1]), ty = Integer.parseInt(ex[2]), td = Level.DIRS.indexOf(ex[3].charAt(0));
+        boolean fromDungeon = lv.theme.equals("dungeon");
+        audio.sfx(fromDungeon ? "stairs" : "gate");
+        loadLevel(file, tx, ty, td);
+        if (fromDungeon && !lv.theme.equals("dungeon")) say("YOU CLIMB INTO MOONLIGHT.", Pal.TEAL_L);
+        else if (lv.theme.equals("dungeon")) say("YOU DESCEND INTO " + lv.name.toUpperCase() + ".", Pal.STONE7);
+        if (file.equals("vale.txt") && !reachedTown) {
+            reachedTown = true;
+            say("LANTERNS. SMOKE. THE LIVING. HOLLOWMERE.", Pal.GOLD);
+            say("FOUR GATES LEAD OUT INTO THE VALE. GO WHERE YOU WILL.", Pal.STONE7);
+        }
+    }
+    private boolean reachedTown;
 
     private void say(String s, int c) {
         // wrap to the log width
@@ -201,6 +246,7 @@ public final class Game {
     }
 
     private void arrive() {
+        checkArea(true);
         Item it = lv.itemAt(px, py);
         if (it != null && it.pickable()) {
             lv.items.remove(it);
@@ -464,6 +510,8 @@ public final class Game {
     private void step(int d, int kind) {
         int nx = px + Level.DX[d], ny = py + Level.DY[d];
         char c = lv.at(nx, ny);
+        String[] ex = lv.exitAt(nx, ny);
+        if (ex != null && kind == A_FWD) { travel(ex); return; }
         if (c == Level.STAIRS && kind == A_FWD && lv.next != null) { descend(); return; }
         if (!lv.passable(nx, ny) || lv.monsterAt(nx, ny) != null) {
             anim = A_BUMP; animT = 0; shake = Math.max(shake, 0.08f);
@@ -515,6 +563,11 @@ public final class Game {
             return;
         }
         if ("lever_on".equals(deco)) { say("THE LEVER WILL NOT MOVE AGAIN.", Pal.STONE7); return; }
+        String[] ex = lv.exitAt(fx, fy);
+        if (ex != null) { travel(ex); return; }
+        String note = lv.noteAt(fx, fy);
+        if (note != null) { say(note, Pal.PARCH); return; }
+        if (lv.isShrine(fx, fy) && lv.faceOnAxis(fx, fy, face)) { shrine(lv.shrineKinds.get(c)); return; }
         switch (c) {
             case Level.DOOR:
                 if (lv.doorAnim[fy][fx] <= 0) { lv.doorAnim[fy][fx] = 0.001f; say("THE DOOR GROANS UPWARD.", Pal.STONE8); audio.sfx("door"); }
@@ -530,7 +583,6 @@ public final class Game {
                 return;
             case Level.BARS: say("THE CRYPT GATE IS CHAINED SHUT FROM OUTSIDE.", Pal.STONE7); audio.sfx("bars"); return;
             case Level.SECRET: say("BURIAL NICHES. THE DEAD SLEEP IN ROWS.", Pal.STONE7); return;
-            case Level.SHRINE: shrine(); return;
             case Level.STAIRS:
                 if (lv.next != null) descend();
                 else say("THE CHAPEL IS BARRED. NOT YET.", Pal.STONE7);
@@ -565,10 +617,10 @@ public final class Game {
         if (lv.solid(fx, fy)) say("COLD, SWEATING STONE.", Pal.STONE6);
     }
 
-    private void shrine() {
+    private void shrine(String kind) {
         for (Member m : party) { if (!m.alive()) say(m.name + " RISES AGAIN.", Pal.TEAL_L); m.hp = m.maxHp; }
-        cpX = px; cpY = py; cpDir = dir;
-        boolean inn = lv.shrineKind.equals("inn");
+        cpX = px; cpY = py; cpDir = dir; cpFile = levelFile;
+        boolean inn = "inn".equals(kind);
         say(inn ? "YOU REST AT THE INN UNTIL DAWN THAT NEVER COMES." : "THE GRAVE SHRINE MENDS YOUR FLESH.", Pal.TEAL_L);
         floaters.add(new Floater(inn ? "RESTED" : "MENDED", Pal.TEAL_L, 64, 70));
         audio.sfx(inn ? "rest" : "shrine");
@@ -646,6 +698,10 @@ public final class Game {
     }
 
     private void respawn() {
+        if (cpFile != null && !cpFile.equals(levelFile)) {
+            int x = cpX, y = cpY, d = cpDir;
+            loadLevel(cpFile, x, y, d);
+        }
         px = cpX; py = cpY; dir = cpDir;
         for (Member m : party) m.hp = Math.max(1, m.maxHp / 2);
         anim = A_NONE; queue.clear();
@@ -657,6 +713,9 @@ public final class Game {
     }
 
     private void markSeen() {
+        if (!lv.theme.equals("dungeon"))      // outdoors you can see the land around you
+            for (int y = Math.max(0, py - 3); y <= Math.min(lv.h - 1, py + 3); y++)
+                for (int x = Math.max(0, px - 3); x <= Math.min(lv.w - 1, px + 3); x++) lv.seen[y][x] = true;
         int fx = Level.DX[dir], fy = Level.DY[dir], rx = Level.DX[(dir + 1) & 3], ry = Level.DY[(dir + 1) & 3];
         for (int dz = 0; dz <= 3; dz++)
             for (int dx = -1; dx <= 1; dx++) {
@@ -715,7 +774,7 @@ public final class Game {
         }
         for (Floater f : floaters) g.textC(f.s, VX + (int) f.x, VY + (int) f.y, f.c);
         if (bannerT > 0 && state == PLAY) {
-            String n = lv.name.toUpperCase();
+            String n = banner.toUpperCase();
             int bw = Gfx.width(n) + 12;
             g.shade(VX + 64 - bw / 2, VY + 6, bw, 13, 110);
             g.textC(n, VX + 64, VY + 9, Pal.CURSE_L);
@@ -787,7 +846,7 @@ public final class Game {
 
     private void drawMap() {
         g.fill(VX, VY, 128, 128, 0xff1a1611);
-        int cs = 7;
+        int cs = lv.w > 40 ? 3 : 7;     // the open world gets a wider, zoomed-out view
         int ox = VX + 64 - (px * cs + cs / 2), oy = VY + 64 - (py * cs + cs / 2);
         for (int y = 0; y < lv.h; y++)
             for (int x = 0; x < lv.w; x++) {
@@ -804,10 +863,14 @@ public final class Game {
                     case Level.BARS: col = Pal.STEEL; break;
                     case Level.STAIRS: col = Pal.TEAL; break;
                     case Level.SHRINE: col = Pal.TEAL_L; break;
-                    default: col = 0xff352f24;
+                    default:
+                        if (lv.blocked.contains(c)) col = 0xff1d4a5a;
+                        else if (lv.floorKinds.containsKey(c)) col = c == ':' ? 0xff9a8e7a : 0xffa08a62;
+                        else if (lv.shrineKinds.containsKey(c)) col = Pal.TEAL_L;
+                        else col = 0xff352f24;
                 }
                 g.fill(sx, sy, cs, cs, col);
-                if (!lv.solid(x, y)) g.frame(sx, sy, cs, cs, 0xff786c54);
+                if (cs > 4 && !lv.solid(x, y)) g.frame(sx, sy, cs, cs, 0xff786c54);
             }
         // party arrow
         int cx = ox + px * cs + cs / 2, cy = oy + py * cs + cs / 2;
@@ -818,6 +881,7 @@ public final class Game {
         g.fill(cx - 1, cy - 1, 3, 3, Pal.RED);
         g.fill(cx + Level.DX[dir] * 3, cy + Level.DY[dir] * 3, 1, 1, Pal.RED_L);
         g.textS("MAP", VX + 4, VY + 4, Pal.PARCH);
+        if (area != null) g.textS(area.name.toUpperCase(), VX + 4, VY + 118, Pal.GOLD);
     }
 
     private void drawSideColumns() {

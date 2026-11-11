@@ -462,3 +462,74 @@ def sky(theme, seed=521, facing=0):
             if yy[wy, wx] >= h[wx] + 2:
                 emi[wy:wy + 2, wx:wx + 2] = hexrgb("f09c3b")
     return col, emi
+
+
+# ------------------------------------------------------------ the open vale
+def cliff(seed=601):
+    """Rock face for hills and cliffs, with a ragged grassy top against the sky."""
+    rng = Rng(seed)
+    alb, emi, a = _blank("2d2933")
+    yy, xx = _grid()
+    n = value_noise(T, T, 10, seed, 4)
+    n2 = value_noise(T, T, 3, seed + 1, 2)
+    # big fractured slabs with lit tops and dark undersides
+    for k in range(9):
+        y0 = rng.u(8, 110); h = rng.u(16, 30)
+        x0 = rng.u(-20, 110); w = rng.u(30, 70)
+        m = (xx >= x0) & (xx < x0 + w) & (yy >= y0) & (yy < y0 + h)
+        base = hexrgb(["5d5369", "685e72", "54505c", "6b6570"][rng.i(0, 3)])
+        col = base * (0.75 + 0.5 * n[..., None]) + (n2[..., None] - 0.5) * 16
+        col = np.where((yy < y0 + 3)[..., None], col * 1.3, col)
+        col = np.where((yy > y0 + h - 4)[..., None], col * 0.55, col)
+        alb[m] = col[m]
+    alb[(value_noise(T, T, 5, seed + 2, 3) > 0.68)] *= 0.6
+    # cracks
+    for _ in range(6):
+        x, y = rng.u(0, T), rng.u(10, T)
+        for s in range(rng.i(10, 24)):
+            x += rng.u(-1, 1); y += rng.u(0.4, 1.2)
+            if 0 <= int(y) < T:
+                alb[int(y), int(x) % T] = hexrgb("15131a")
+    # grassy lip and a ragged top edge
+    edge = 6 + 10 * value_noise(T, T, 8, seed + 3, 2)[0]
+    a[yy < edge[None, :]] = 0
+    lip = (yy >= edge[None, :]) & (yy < edge[None, :] + 7 + 5 * n2)
+    alb[lip] = np.where((n2[lip] > 0.5)[:, None], hexrgb("4e6a27"), hexrgb("2e3d1c"))
+    # moss runs and ferns at the foot
+    moss = (value_noise(T, T, 6, seed + 4, 3) + yy / T * 0.4 > 1.0)
+    alb[moss] = alb[moss] * 0.4 + hexrgb("3d561f") * 0.6
+    return alb, emi, a
+
+
+def dirt_road(seed=611):
+    yy, xx = _grid()
+    n1 = value_noise(T, T, 12, seed, 4)
+    n2 = value_noise(T, T, 3, seed + 1, 2)
+    alb = hexrgb("5a4a36") * (0.7 + 0.5 * n1[..., None]) + (n2[..., None] - 0.5) * 18
+    # cart ruts and scattered stones
+    for rx in (38, 90):
+        rut = np.abs(xx - rx - 4 * np.sin(yy / 20)) < 5
+        alb[rut] *= 0.72
+    rng = Rng(seed)
+    for _ in range(40):
+        x, y = rng.i(0, T - 4), rng.i(0, T - 4)
+        alb[y:y + 3, x:x + 3] = hexrgb("7f7585") * rng.u(0.8, 1.2)
+        alb[y + 3, x:x + 3] = hexrgb("2d2933")
+    grass = value_noise(T, T, 9, seed + 2, 3) > 0.7
+    alb[grass] = hexrgb("3d561f") * (0.8 + 0.4 * n2[grass][:, None])
+    return alb
+
+
+def water(seed=621):
+    yy, xx = _grid()
+    n = value_noise(T, T, 16, seed, 4)
+    alb = hexrgb("0c2a2c") * (0.7 + 0.5 * n[..., None])
+    # ripples catching the moonlight
+    rip = (np.sin(xx / 7 + 3 * value_noise(T, T, 12, seed + 1, 2)) * np.sin(yy / 3) > 0.9)
+    alb[rip] = hexrgb("3a7a78")
+    glint = (value_noise(T, T, 2, seed + 2, 1) > 0.88) & rip
+    alb[glint] = hexrgb("a8d8d0")
+    return alb
+
+
+OUT_SURFACES["cliff"] = cliff

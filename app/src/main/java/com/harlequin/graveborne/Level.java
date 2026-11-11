@@ -20,6 +20,23 @@ public final class Level {
     public boolean intro;
     public String stairsKind = "stairs", shrineKind = "shrine", next = null;
     public final HashMap<Character, String[]> wallKinds = new HashMap<>();
+    /** Ground cells beyond '.': char -> floor texture (dirt road, cobbles, water...). */
+    public final HashMap<Character, String> floorKinds = new HashMap<>();
+    /** Ground you can see but not walk on (water). */
+    public final java.util.HashSet<Character> blocked = new java.util.HashSet<>();
+    /** Shrine-like cells (rest and revive): char -> face texture. */
+    public final HashMap<Character, String> shrineKinds = new HashMap<>();
+    /** Cells that lead to another map: key y*w+x -> {file, tx, ty, dir}. */
+    public final HashMap<Integer, String[]> exits = new HashMap<>();
+    /** Text shown when you examine a cell: key y*w+x. */
+    public final HashMap<Integer, String> notes = new HashMap<>();
+    /** Named regions: name, music, step sound. */
+    public final ArrayList<Area> areas = new ArrayList<>();
+
+    public static final class Area {
+        public int x0, y0, x1, y1;
+        public String name, music, step;
+    }
     public int w, h;
     public char[][] cell;
     /** door opening progress 0..1 per cell (only used while opening). */
@@ -51,7 +68,25 @@ public final class Level {
                 case "THEME": lv.theme = p[1]; break;
                 case "INTRO": lv.intro = true; break;
                 case "STAIRS": lv.stairsKind = p[1]; break;
-                case "SHRINE": lv.shrineKind = p[1]; break;
+                case "SHRINE":
+                    if (p.length >= 3) lv.shrineKinds.put(p[1].charAt(0), p[2]);
+                    else { lv.shrineKind = p[1]; lv.shrineKinds.put(SHRINE, p[1]); }
+                    break;
+                case "FLOOR":
+                    lv.floorKinds.put(p[1].charAt(0), p[2]);
+                    if (p.length >= 4 && p[3].equals("block")) lv.blocked.add(p[1].charAt(0));
+                    break;
+                case "EXIT": lv.pendingExit.add(p); break;
+                case "NOTE": lv.pendingNote.add(new String[]{p[1], p[2], line.split("\\s+", 4)[3]}); break;
+                case "AREA": {
+                    Area a = new Area();
+                    a.x0 = Integer.parseInt(p[1]); a.y0 = Integer.parseInt(p[2]);
+                    a.x1 = Integer.parseInt(p[3]); a.y1 = Integer.parseInt(p[4]);
+                    a.music = p[5]; a.step = p[6];
+                    a.name = line.split("\\s+", 8)[7];
+                    lv.areas.add(a);
+                    break;
+                }
                 case "NEXT": lv.next = p[1]; break;
                 case "WALL": {
                     String[] k = new String[p.length - 2];
@@ -98,10 +133,37 @@ public final class Level {
         for (String[] p : lv.pendingDeco)
             lv.setDeco(Integer.parseInt(p[1]), Integer.parseInt(p[2]), DIRS.indexOf(p[3].charAt(0)), p[4]);
         lv.pendingDeco.clear();
+        for (String[] p : lv.pendingExit)
+            lv.exits.put(Integer.parseInt(p[2]) * lv.w + Integer.parseInt(p[1]), new String[]{p[3], p[4], p[5], p[6]});
+        for (String[] p : lv.pendingNote)
+            lv.notes.put(Integer.parseInt(p[1]) * lv.w + Integer.parseInt(p[0]), p[2]);
+        if (lv.shrineKinds.isEmpty()) lv.shrineKinds.put(SHRINE, lv.shrineKind);
         return lv;
     }
 
     private final ArrayList<String[]> pendingDeco = new ArrayList<>();
+    private final ArrayList<String[]> pendingExit = new ArrayList<>();
+    private final ArrayList<String[]> pendingNote = new ArrayList<>();
+
+    public String[] exitAt(int x, int y) {
+        if (x < 0 || y < 0 || x >= w || y >= h) return null;
+        return exits.get(y * w + x);
+    }
+
+    public String noteAt(int x, int y) {
+        if (x < 0 || y < 0 || x >= w || y >= h) return null;
+        return notes.get(y * w + x);
+    }
+
+    public Area areaAt(int x, int y) {
+        for (Area a : areas) if (x >= a.x0 && x <= a.x1 && y >= a.y0 && y <= a.y1) return a;
+        return null;
+    }
+
+    public boolean isShrine(int x, int y) { return shrineKinds.containsKey(at(x, y)); }
+
+    /** Floor texture for a cell, or null for the theme's default ground. */
+    public String floorKind(int x, int y) { return floorKinds.get(at(x, y)); }
 
     public char at(int x, int y) {
         if (x < 0 || y < 0 || x >= w || y >= h) return WALL;
@@ -110,7 +172,7 @@ public final class Level {
 
     public boolean passable(int x, int y) {
         char c = at(x, y);
-        if (c != FLOOR && c != OPEN) return false;
+        if (!open(x, y) || blocked.contains(c)) return false;
         for (Item it : items) if (it.prop && it.x == x && it.y == y) return false;
         return true;
     }
@@ -118,7 +180,7 @@ public final class Level {
     /** Is the grid cell open ground (props stand on open ground but block walking)? */
     public boolean open(int x, int y) {
         char c = at(x, y);
-        return c == FLOOR || c == OPEN;
+        return c == FLOOR || c == OPEN || floorKinds.containsKey(c);
     }
 
     /** Solid blocks are drawn as cubes (walls, closed doors, bars...). */
@@ -167,8 +229,9 @@ public final class Level {
             case LOCKED: return faceOnAxis(x, y, dir) ? "locked" : plain;
             case BARS: return faceOnAxis(x, y, dir) ? "bars" : plain;
             case STAIRS: return faceOnAxis(x, y, dir) ? stairsKind : plain;
-            case SHRINE: return faceOnAxis(x, y, dir) ? shrineKind : plain;
-            default: return plain;
+            default:
+                if (shrineKinds.containsKey(c)) return faceOnAxis(x, y, dir) ? shrineKinds.get(c) : plain;
+                return plain;
         }
     }
 

@@ -31,10 +31,17 @@ aside and climb out into the tomb chamber, facing a chained iron crypt gate. A l
 hidden behind the skull carved into the plaque above your sarcophagus: haul it down and a
 wall of burial niches sinks into the floor, off to your left, opening a secret passage.
 
-## The journey so far
-1. **The Crypt**: climb out of your sarcophagus, find the hidden lever, escape through the burial halls and climb the stairs into moonlight.
-2. **The Ashen Wood**: the walled graveyard by the crypt's mausoleum, then winding forest paths, a grave clearing and a wayside shrine.
-3. **Hollowmere**: a lantern-lit town. Talk to the guard, the innkeeper and the priest, and rest at the inn.
+## The world
+The opening is linear, then the game opens up.
+1. **The Crypt** (linear): climb out of your sarcophagus, find the hidden lever, escape through the burial halls and climb the stairs into moonlight.
+2. **The Ashen Wood trail** (linear): the walled graveyard by the crypt's mausoleum, then a winding forest trail to Hollowmere's north gate.
+3. **Hollowmere and the vale** (open world, `tools/vale.py`, 80 x 64 cells): the town is the hub. It has a ring lane, side streets, alleys, courtyards, a market yard, the chapel and the Lantern inn on the central square, and four guarded gates. Each gate opens onto the wilds, and the wilds loop around the town, so every region can be reached from every gate:
+   - **North**: the North Road back to the graveyard trail, and the High Moor with the Hanged Watch.
+   - **East**: the Mine Road to the Mine Cliffs; the Pyre Fields to the south-east.
+   - **West**: the deep Ashen Wood, with Gibbet Hill, the Wayside Shrine and Hunter's Hollow.
+   - **South**: the River Hollow and its three bridges, the Black Mire with the Drowned Barrow, and the ruined Wardens' Keep.
+
+   The Watch, the mine, the Barrow and the Keep are sealed for now; they are the later chapters' dungeons. Region names show as you enter them, and the map zooms out in the open world.
 
 ## Sound
 Everything is synthesised by `tools/audio`: scores for the title, dungeon, forest and town

@@ -32,7 +32,10 @@ house2
 inn
 chapel
 exit
+cliff
 floor
 ceil
 grass
 cobble
+path
+water

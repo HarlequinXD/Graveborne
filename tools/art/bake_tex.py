@@ -52,6 +52,8 @@ def main():
     add("ceil", TX.ceiling(), None, None)
     add("grass", TO.forest_floor(), None, None)
     add("cobble", TO.cobbles(), None, None)
+    add("path", TO.dirt_road(), None, None)
+    add("water", TO.water(), None, None)
     cols = 8
     rows = (len(tiles) + cols - 1) // cols
     sheet = np.zeros((rows * 128, cols * 128, 4), np.uint8)

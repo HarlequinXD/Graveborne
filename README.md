@@ -5,8 +5,11 @@ A portrait-mode, step-by-step first-person dungeon crawler for Android, in the s
 way out of the Oubliette.
 
 ## How it looks
-* The 128x128 view is real-time 3D built from tiles: every grid cell is a textured block,
-  with floors, ceilings and the night sky textured too (`Renderer3D.java`).
+* The 128x128 view is real-time 3D built from tiles, drawn like Game Boy Advance 3D
+  (Driv3r, Asterix & Obelix XXL) and the PS1 (`Renderer3D.java`): textured triangles with
+  affine texture mapping (textures bend on near walls and floors), vertices snapped to whole
+  pixels (geometry wobbles as you move), per-vertex torch light, 4x4 ordered dithering on
+  the light ramps and a dithered 15-bit colour pass.
 * Doors, the bed slab, cell bars, chains, sconces, sigils, shrines, stairs, trees and
   house fronts are painted onto the wall textures (`tools/art`), full-colour pixel art on
   nine material ramps. Bars, archways, rising doors, tree canopies and rooftops are see-through.

@@ -5,10 +5,14 @@ import java.util.Arrays;
 import java.util.HashMap;
 
 /**
- * Real-time 3D tile renderer for the 128x128 view. Every grid cell is a textured block
- * (walls, doors and their details are painted on the faces); floors, ceilings and the
- * night sky are textured too. Lighting works like the painted art: each pixel's colour
- * slides along its material ramp with the torch's falloff, with a light 2x2 dither.
+ * Real-time 3D tile renderer for the 128x128 view, in the style of Game Boy Advance 3D
+ * (Driv3r, Asterix &amp; Obelix XXL) and the PS1: every grid cell is built from textured
+ * quads, drawn as triangles with
+ *  - affine texture mapping (UVs interpolated in screen space, no perspective divide,
+ *    so textures bend on near walls and floors),
+ *  - vertices snapped to whole pixels (no sub-pixel precision, so geometry jitters),
+ *  - per-vertex (Gouraud) torch light, stepping each texel along its colour ramp,
+ *  - heavy 4x4 ordered dithering on the light ramps and a 15-bit colour pass.
  */
 public final class Renderer3D {
     public static final int V = 128;
@@ -139,217 +143,262 @@ public final class Renderer3D {
         return Math.min(0.7f, -(d - 0.9f) * 1.75f);
     }
 
-    private static final float[] BAYER = {0.2f, 0.6f, 0.8f, 0.4f};
+    private static final float[] BAYER4 = {
+            0 / 16f, 8 / 16f, 2 / 16f, 10 / 16f,
+            12 / 16f, 4 / 16f, 14 / 16f, 6 / 16f,
+            3 / 16f, 11 / 16f, 1 / 16f, 9 / 16f,
+            15 / 16f, 7 / 16f, 13 / 16f, 5 / 16f};
 
     private int shadePixel(int i, int x, int y) {
         short idx = pIdx[i];
-        if (idx < 0) return pDirect[i];
-        float st = pSteps[i], g = pGlow[i];
-        if (g > 0) st = Math.max(st, st * (1 - Math.min(g, 1f)) + g * 2.4f);
-        int r = rampOf[idx];
-        float fp = posOf[idx] + st;
-        int len = rampLen[r];
-        if (fp < 0) fp = 0;
-        if (fp > len - 1) fp = len - 1;
-        int lo = (int) fp;
-        float frac = fp - lo;
-        float th = BAYER[(y & 1) * 2 + (x & 1)];
-        int pos = lo + (frac > 0.5f + (th - 0.5f) * 0.5f ? 1 : 0);
-        if (pos > len - 1) pos = len - 1;
-        return pal[rampTab[r][pos]];
+        float th = BAYER4[(y & 3) * 4 + (x & 3)] + 1 / 32f;
+        int c;
+        if (idx < 0) c = pDirect[i];
+        else {
+            float st = pSteps[i], g = pGlow[i];
+            if (g > 0) st = Math.max(st, st * (1 - Math.min(g, 1f)) + g * 2.4f);
+            int r = rampOf[idx];
+            float fp = posOf[idx] + st;
+            int len = rampLen[r];
+            if (fp < 0) fp = 0;
+            if (fp > len - 1) fp = len - 1;
+            int lo = (int) fp;
+            // full ordered dither between ramp steps: every gradient gets the pattern
+            int pos = lo + ((fp - lo) > th ? 1 : 0);
+            if (pos > len - 1) pos = len - 1;
+            c = pal[rampTab[r][pos]];
+        }
+        // 15-bit colour (5 bits per channel) with the same ordered dither, like the GBA
+        int r = (c >> 16) & 255, gg = (c >> 8) & 255, b = c & 255;
+        int bias = (int) (th * 8);
+        r = Math.min(255, (r + bias) & ~7); gg = Math.min(255, (gg + bias) & ~7); b = Math.min(255, (b + bias) & ~7);
+        return 0xff000000 | (r << 16) | (gg << 8) | b;
     }
 
-    // --------------------------------------------------------------- render
-    private static final class Hit {
-        float perp, u; int tex; float lam;
+    // ---------------------------------------------------------- geometry
+    private static final float NEAR = 0.06f;
+    private float cx, cy, fx, fy, rx, ry;
+    private boolean outdoor;
+
+    /** Camera-space vertex: x right, y up (world height), z forward, plus u, v, light steps. */
+    private final float[][] poly = new float[16][6];
+    private final float[][] clip = new float[16][6];
+    private int polyN;
+
+    private void vtx(int k, float wx, float wh, float wy, float u, float v, float bias) {
+        float dx = wx - cx, dy = wy - cy;
+        float[] p = poly[k];
+        p[0] = dx * rx + dy * ry;
+        p[1] = wh;
+        p[2] = dx * fx + dy * fy;
+        p[3] = u; p[4] = v;
+        float d = (float) Math.sqrt(dx * dx + dy * dy);
+        p[5] = torch(d, outdoor) + bias;
     }
-    private final Hit[] hits = new Hit[24];
-    { for (int i = 0; i < hits.length; i++) hits[i] = new Hit(); }
+
+    /** Draw a world quad (4 verts already in poly[0..3]) with texture t. */
+    private void quad(int t, int flash) {
+        // clip against the near plane (Sutherland-Hodgman)
+        int n = 0;
+        for (int i = 0; i < 4; i++) {
+            float[] a = poly[i], b = poly[(i + 1) & 3];
+            boolean ina = a[2] >= NEAR, inb = b[2] >= NEAR;
+            if (ina) System.arraycopy(a, 0, clip[n++], 0, 6);
+            if (ina != inb) {
+                float k = (NEAR - a[2]) / (b[2] - a[2]);
+                float[] o = clip[n++];
+                for (int j = 0; j < 6; j++) o[j] = a[j] + (b[j] - a[j]) * k;
+            }
+        }
+        if (n < 3) return;
+        // project and snap to whole pixels: no sub-pixel precision -> vertex wobble
+        for (int i = 0; i < n; i++) {
+            float[] p = clip[i];
+            float z = p[2];
+            sxv[i] = Math.round(V / 2f + p[0] / z * FOCAL);
+            syv[i] = Math.round(V / 2f - (p[1] - EYE) / z * FOCAL);
+        }
+        for (int i = 1; i + 1 < n; i++) tri(0, i, i + 1, t, flash);
+    }
+
+    private final int[] sxv = new int[16], syv = new int[16];
+
+    /** Affine triangle: every attribute is interpolated linearly in screen space. */
+    private void tri(int a, int b, int c, int t, int flash) {
+        int x0 = sxv[a], y0 = syv[a], x1 = sxv[b], y1 = syv[b], x2 = sxv[c], y2 = syv[c];
+        long area = (long) (x1 - x0) * (y2 - y0) - (long) (x2 - x0) * (y1 - y0);
+        if (area == 0) return;
+        if (Math.abs(area) > 4_000_000) return;
+        int minX = Math.max(0, Math.min(x0, Math.min(x1, x2))), maxX = Math.min(V - 1, Math.max(x0, Math.max(x1, x2)));
+        int minY = Math.max(0, Math.min(y0, Math.min(y1, y2))), maxY = Math.min(V - 1, Math.max(y0, Math.max(y1, y2)));
+        if (minX > maxX || minY > maxY) return;
+        float inv = 1f / area;
+        float[] A = clip[a], B = clip[b], C = clip[c];
+        short[] tt = t >= 0 ? tex[t] : null;
+        byte[] gg = t >= 0 ? glow[t] : null;
+        for (int y = minY; y <= maxY; y++) {
+            float py = y + 0.5f;
+            for (int x = minX; x <= maxX; x++) {
+                float px = x + 0.5f;
+                float w0 = ((x1 - px) * (y2 - py) - (x2 - px) * (y1 - py)) * inv;
+                float w1 = ((x2 - px) * (y0 - py) - (x0 - px) * (y2 - py)) * inv;
+                float w2 = 1 - w0 - w1;
+                if (w0 < 0 || w1 < 0 || w2 < 0) continue;
+                int i = y * V + x;
+                float z = w0 * A[2] + w1 * B[2] + w2 * C[2];
+                if (z >= depth[i]) continue;
+                float u = w0 * A[3] + w1 * B[3] + w2 * C[3];
+                float v = w0 * A[4] + w1 * B[4] + w2 * C[4];
+                short px_;
+                int tu, tv;
+                if (tt != null) {
+                    tu = ((int) Math.floor(u * T)) & (T - 1);
+                    tv = ((int) Math.floor(v * T)) & (T - 1);
+                    px_ = tt[tv * T + tu];
+                } else {
+                    tu = Math.min(curSpr.w - 1, Math.max(0, (int) (u * curSpr.w)));
+                    tv = Math.min(curSpr.h - 1, Math.max(0, (int) (v * curSpr.h)));
+                    px_ = curSpr.idx[tv * curSpr.w + tu];
+                }
+                if (px_ < 0) continue;
+                pIdx[i] = px_;
+                pSteps[i] = w0 * A[5] + w1 * B[5] + w2 * C[5];
+                pGlow[i] = ((tt != null ? gg[tv * T + tu] : curSpr.glow[tv * curSpr.w + tu]) & 255) / 255f;
+                depth[i] = z;
+                flashPix[i] = flash != 0;
+            }
+        }
+    }
+
+    private Spr curSpr;
+
+    private float lam(float nx, float ny, float qx, float qy) {
+        // light falls off on faces seen at a glancing angle (torch is at the camera)
+        float dx = qx - cx, dy = qy - cy;
+        float d = (float) Math.sqrt(dx * dx + dy * dy) + 1e-4f;
+        float c = Math.abs((dx * nx + dy * ny) / d);
+        return -(1 - c) * 1.6f;
+    }
 
     /**
-     * @param cx camera x in cells (cell x spans x..x+1)
-     * @param cy camera y in cells (y grows southward)
+     * @param camX camera x in cells (cell x spans x..x+1)
+     * @param camY camera y in cells (y grows southward)
      * @param ang facing angle in radians, 0 = north, PI/2 = east
      */
-    public void render(Level lv, float cx, float cy, float ang, float time, int flashMode) {
-        boolean outdoor = lv.outdoor();
-        float fx = (float) Math.sin(ang), fy = (float) -Math.cos(ang);
-        float rx = (float) Math.cos(ang), ry = (float) Math.sin(ang);
+    public void render(Level lv, float camX, float camY, float ang, float time, int flashMode) {
+        outdoor = lv.outdoor();
+        cx = camX; cy = camY;
+        fx = (float) Math.sin(ang); fy = (float) -Math.cos(ang);
+        rx = (float) Math.cos(ang); ry = (float) Math.sin(ang);
         int skyRow = lv.theme.equals("town") ? 1 : 0;
-        int floorT = tid(outdoor ? (lv.theme.equals("town") ? "cobble" : "grass") : "floor");
-        int ceilT = tid("ceil");
-        // ---- floor, ceiling, sky
-        for (int y = 0; y < V; y++) {
-            float yoff = y + 0.5f - V / 2f;
-            boolean below = yoff > 0;
+        // background: sky outdoors (upper half), black elsewhere
+        for (int y = 0; y < V; y++)
             for (int x = 0; x < V; x++) {
                 int i = y * V + x;
-                float camx = (x + 0.5f - V / 2f) / (V / 2f);
-                if (!below && outdoor) {
+                depth[i] = 1e9f;
+                pIdx[i] = -1;
+                if (outdoor && y < 64) {
+                    float camx = (x + 0.5f - V / 2f) / (V / 2f);
                     double a = ang + Math.atan(camx);
                     int sx = (int) Math.floor((a + Math.PI / 4) / (2 * Math.PI) * 512) & 511;
-                    pIdx[i] = -1;
-                    pDirect[i] = sky[(skyRow * 64 + Math.min(63, y)) * 512 + sx];
-                    depth[i] = 1e9f;
+                    pDirect[i] = sky[(skyRow * 64 + y) * 512 + sx];
+                } else pDirect[i] = 0xff000000;
+            }
+        int floorT = tid(outdoor ? (lv.theme.equals("town") ? "cobble" : "grass") : "floor");
+        int ceilT = tid("ceil");
+        int R = 8;
+        int x0 = (int) Math.floor(cx) - R, x1 = (int) Math.floor(cx) + R;
+        int y0 = (int) Math.floor(cy) - R, y1 = (int) Math.floor(cy) + R;
+        for (int y = y0; y <= y1; y++)
+            for (int x = x0; x <= x1; x++) {
+                // rough frustum cull on the cell centre
+                float dx = x + 0.5f - cx, dy = y + 0.5f - cy;
+                float z = dx * fx + dy * fy, xs = dx * rx + dy * ry;
+                if (z < -1.2f || Math.abs(xs) > z + 1.6f || z > R + 0.5f) continue;
+                // floor and ceiling under every cell: see-through walls (bars, opening doors,
+                // the sliding bed wall, tree canopies) reveal the ground inside the block
+                vtx(0, x, 0, y + 1, 0, 1, -0.5f); vtx(1, x + 1, 0, y + 1, 1, 1, -0.5f);
+                vtx(2, x + 1, 0, y, 1, 0, -0.5f); vtx(3, x, 0, y, 0, 0, -0.5f);
+                quad(floorT, 0);
+                if (!outdoor) {
+                    vtx(0, x, 1, y, 0, 0, -1.9f); vtx(1, x + 1, 1, y, 1, 0, -1.9f);
+                    vtx(2, x + 1, 1, y + 1, 1, 1, -1.9f); vtx(3, x, 1, y + 1, 0, 1, -1.9f);
+                    quad(ceilT, 0);
+                }
+                if (lv.open(x, y)) {
+                    if (lv.at(x, y) == Level.OPEN) {
+                        // archway frames on the open door's axis faces
+                        for (int d = 0; d < 4; d++) if (lv.faceOnAxis(x, y, d)) faceQuad(lv, x, y, d, tid("arch"), true);
+                    }
                     continue;
                 }
-                float perp = EYE * FOCAL / Math.abs(yoff);
-                float wx = cx + (fx + rx * camx) * perp, wy = cy + (fy + ry * camx) * perp;
-                int t = below ? floorT : ceilT;
-                int tu = (int) ((wx - (float) Math.floor(wx)) * T) & (T - 1);
-                int tv = (int) ((wy - (float) Math.floor(wy)) * T) & (T - 1);
-                pIdx[i] = tex[t][tv * T + tu];
-                pGlow[i] = 0;
-                float d = perp * (float) Math.sqrt(1 + camx * camx);
-                pSteps[i] = torch(d, outdoor) + (below ? -0.5f : -1.9f);
-                depth[i] = perp;
-            }
-        }
-        // ---- walls: DDA per column, gathering see-through faces until an opaque one
-        for (int x = 0; x < V; x++) {
-            float camx = (x + 0.5f - V / 2f) / (V / 2f);
-            float dx = fx + rx * camx, dy = fy + ry * camx;
-            float dlen = (float) Math.sqrt(dx * dx + dy * dy);
-            int mx = (int) Math.floor(cx), my = (int) Math.floor(cy);
-            float ddx = dx == 0 ? 1e9f : Math.abs(1 / dx), ddy = dy == 0 ? 1e9f : Math.abs(1 / dy);
-            int sx = dx > 0 ? 1 : -1, sy = dy > 0 ? 1 : -1;
-            float tx = (dx > 0 ? (mx + 1 - cx) : (cx - mx)) * ddx;
-            float ty = (dy > 0 ? (my + 1 - cy) : (cy - my)) * ddy;
-            int nh = 0;
-            for (int step = 0; step < 40 && nh < hits.length; step++) {
-                int side;
-                if (tx < ty) { tx += ddx; mx += sx; side = 0; } else { ty += ddy; my += sy; side = 1; }
-                float perp = side == 0 ? tx - ddx : ty - ddy;
-                if (perp > 12) break;
-                int face; float u;
-                if (side == 0) {
-                    float hy = cy + dy * perp;
-                    u = hy - (float) Math.floor(hy);
-                    face = sx > 0 ? Level.W : Level.E;
-                    if (sx < 0) u = 1 - u;
-                } else {
-                    float hx = cx + dx * perp;
-                    u = hx - (float) Math.floor(hx);
-                    face = sy > 0 ? Level.N : Level.S;
-                    if (sy > 0) u = 1 - u;
-                }
-                float lam = side == 0 ? Math.abs(dx) / dlen : Math.abs(dy) / dlen;
-                char c = lv.at(mx, my);
-                if (lv.solid(mx, my)) {
-                    int t = tid(lv.faceKind(mx, my, face));
-                    Hit h = hits[nh++];
-                    h.perp = perp; h.u = u; h.tex = t; h.lam = lam;
-                    if (!texAlpha[t]) break;
-                } else if (c == Level.OPEN && lv.faceOnAxis(mx, my, face)) {
-                    Hit h = hits[nh++];
-                    h.perp = perp; h.u = u; h.tex = tid("arch"); h.lam = lam;
+                for (int d = 0; d < 4; d++) {
+                    int nx = x + Level.DX[d], ny = y + Level.DY[d];
+                    if (!lv.open(nx, ny)) continue;
+                    faceQuad(lv, x, y, d, tid(lv.faceKind(x, y, d)), false);
                 }
             }
-            for (int k = nh - 1; k >= 0; k--) {
-                Hit h = hits[k];
-                if (h.perp < 0.02f) continue;
-                float size = FOCAL / h.perp;
-                float top = V / 2f - (1 - EYE) * size, bot = V / 2f + EYE * size;
-                int y0 = Math.max(0, (int) Math.ceil(top - 0.5f)), y1 = Math.min(V, (int) Math.ceil(bot - 0.5f));
-                int tu = Math.min(T - 1, (int) (h.u * T));
-                short[] tt = tex[h.tex];
-                byte[] gg = glow[h.tex];
-                float d = h.perp * (float) Math.sqrt(1 + camx * camx);
-                float st = torch(d, outdoor) - (1 - h.lam) * 1.6f;
-                for (int y = y0; y < y1; y++) {
-                    int tv = (int) ((y + 0.5f - top) / size * T);
-                    if (tv < 0) tv = 0; else if (tv >= T) tv = T - 1;
-                    short v = tt[tv * T + tu];
-                    if (v < 0) continue;
-                    int i = y * V + x;
-                    pIdx[i] = v;
-                    pGlow[i] = (gg[tv * T + tu] & 255) / 255f;
-                    pSteps[i] = st;
-                    depth[i] = h.perp;
-                }
-            }
-        }
-        // ---- sprites (monsters, items, props), far to near, depth tested per pixel
-        drawSprites(lv, cx, cy, fx, fy, rx, ry, outdoor);
-        // ---- resolve colours
+        drawSprites(lv);
         int[] o = out.px;
         for (int y = 0; y < V; y++)
             for (int x = 0; x < V; x++) {
                 int i = y * V + x;
-                o[i] = shadePixel(i, x, y);
-                if (flashPix[i]) {
-                    int c = o[i];
-                    o[i] = 0xff000000 | ((((c >> 16) & 255) + 510) / 3 << 16) | ((((c >> 8) & 255) + 510) / 3 << 8) | (((c & 255) + 460) / 3);
-                }
+                int c = shadePixel(i, x, y);
+                if (flashPix[i]) c = 0xff000000 | ((((c >> 16) & 255) + 510) / 3 << 16) | ((((c >> 8) & 255) + 510) / 3 << 8) | (((c & 255) + 460) / 3);
+                o[i] = c;
             }
-        Arrays.fill(flashPix, false);
+        java.util.Arrays.fill(flashPix, false);
+    }
+
+    /** One face of cell (x,y) pointing in direction d, textured so u runs left-to-right as seen from outside. */
+    private void faceQuad(Level lv, int x, int y, int d, int t, boolean inset) {
+        // corners on the cell edge, ordered left -> right as seen by someone facing the face
+        float ax, ay, bx, by, nx = Level.DX[d], ny = Level.DY[d];
+        switch (d) {
+            case Level.N: ax = x + 1; ay = y; bx = x; by = y; break;
+            case Level.S: ax = x; ay = y + 1; bx = x + 1; by = y + 1; break;
+            case Level.E: ax = x + 1; ay = y + 1; bx = x + 1; by = y; break;
+            default: ax = x; ay = y; bx = x; by = y + 1; break;
+        }
+        // back-face cull: camera must be on the outside of the face
+        float side = (cx - ax) * nx + (cy - ay) * ny;
+        if (side <= 0) {
+            if (!inset) return;
+        }
+        float qx = (ax + bx) / 2, qy = (ay + by) / 2;
+        float b = lam(nx, ny, qx, qy);
+        // seen from the face's front, the viewer looks along -n; "left" is corner a
+        vtx(0, ax, 0, ay, 0, 1, b); vtx(1, bx, 0, by, 1, 1, b);
+        vtx(2, bx, 1, by, 1, 0, b); vtx(3, ax, 1, ay, 0, 0, b);
+        quad(t, 0);
     }
 
     private final boolean[] flashPix = new boolean[V * V];
-    private final ArrayList<float[]> sprList = new ArrayList<>();
-    private final ArrayList<Object> sprRef = new ArrayList<>();
 
-    private void drawSprites(Level lv, float cx, float cy, float fx, float fy, float rx, float ry, boolean outdoor) {
-        sprList.clear(); sprRef.clear();
-        String suf = "";
-        for (Item it : lv.items) {
-            String key = (it.prop ? "o:" : "i:") + it.type;
-            addSprite(key, it.x + 0.5f, it.y + 0.5f, cx, cy, fx, fy, rx, ry, 0);
-        }
+    private void drawSprites(Level lv) {
+        for (Item it : lv.items) billboard((it.prop ? "o:" : "i:") + it.type, it.x + 0.5f, it.y + 0.5f, 0);
         for (Monster m : lv.monsters) {
             if (!m.alive()) continue;
-            addSprite("m:" + m.type + ":" + m.frame(), m.wx() + 0.5f, m.wy() + 0.5f, cx, cy, fx, fy, rx, ry, m.hitFlash > 0 ? 1 : 0);
-        }
-        // sort far to near
-        Integer[] order = new Integer[sprList.size()];
-        for (int i = 0; i < order.length; i++) order[i] = i;
-        Arrays.sort(order, (a, b) -> Float.compare(sprList.get(b)[0], sprList.get(a)[0]));
-        for (int oi : order) {
-            float[] s = sprList.get(oi);
-            Spr sp = (Spr) sprRef.get(oi);
-            float z = s[0], xs = s[1];
-            boolean flash = s[2] > 0;
-            float scale = FOCAL / z;
-            float scx = V / 2f + xs * scale;
-            float w = sp.ww * scale, h = sp.wh * scale;
-            float bottom = V / 2f + (EYE - sp.lift) * scale;
-            float top = bottom - h, left = scx - w / 2;
-            int x0 = Math.max(0, (int) Math.ceil(left - 0.5f)), x1 = Math.min(V, (int) Math.ceil(left + w - 0.5f));
-            int y0 = Math.max(0, (int) Math.ceil(top - 0.5f)), y1 = Math.min(V, (int) Math.ceil(bottom - 0.5f));
-            float st = torch((float) Math.hypot(z, xs), outdoor) + 0.25f;
-            for (int x = x0; x < x1; x++) {
-                int u = (int) ((x + 0.5f - left) / w * sp.w);
-                if (u < 0 || u >= sp.w) continue;
-                for (int y = y0; y < y1; y++) {
-                    int i = y * V + x;
-                    if (z >= depth[i]) continue;
-                    int v = (int) ((y + 0.5f - top) / h * sp.h);
-                    if (v < 0 || v >= sp.h) continue;
-                    short c = sp.idx[v * sp.w + u];
-                    if (c < 0) continue;
-                    pIdx[i] = c;
-                    pSteps[i] = st;
-                    pGlow[i] = (sp.glow[v * sp.w + u] & 255) / 255f;
-                    depth[i] = z;
-                    flashPix[i] = flash;
-                }
-            }
+            billboard("m:" + m.type + ":" + m.frame(), m.wx() + 0.5f, m.wy() + 0.5f, m.hitFlash > 0 ? 1 : 0);
         }
     }
 
-    private void addSprite(String key, float wx, float wy, float cx, float cy, float fx, float fy, float rx, float ry, int flash) {
+    private void billboard(String key, float wx, float wy, int flash) {
         Spr sp = sprites.get(key);
         if (sp == null) {
             int c = key.lastIndexOf(':');
             if (key.startsWith("m:") && c > 2) sp = sprites.get(key.substring(0, c) + ":idle");
             if (sp == null) return;
         }
-        float relx = wx - cx, rely = wy - cy;
-        float z = relx * fx + rely * fy;
-        if (z < 0.2f || z > 9f) return;
-        float xs = relx * rx + rely * ry;
-        if (Math.abs(xs) > z * 1.3f + 1) return;
-        sprList.add(new float[]{z, xs, flash});
-        sprRef.add(sp);
+        float dx = wx - cx, dy = wy - cy;
+        if (dx * fx + dy * fy < NEAR) return;
+        // a camera-facing card: corners offset along the camera's right vector
+        float hw = sp.ww / 2;
+        float lx = wx - rx * hw, ly = wy - ry * hw, rxw = wx + rx * hw, ryw = wy + ry * hw;
+        float b = 0.25f;
+        vtx(0, lx, sp.lift, ly, 0, 1, b); vtx(1, rxw, sp.lift, ryw, 1, 1, b);
+        vtx(2, rxw, sp.lift + sp.wh, ryw, 1, 0, b); vtx(3, lx, sp.lift + sp.wh, ly, 0, 0, b);
+        curSpr = sp;
+        quad(-1, flash);
     }
 }

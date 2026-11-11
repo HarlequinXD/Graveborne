@@ -5,13 +5,15 @@ A portrait-mode, step-by-step first-person dungeon crawler for Android, in the s
 way out of the Oubliette.
 
 ## How it looks
-* The 128x128 view is composed from **pre-rendered sprites**, not a 3D engine. Every wall,
-  door, decoration, monster and item piece is baked by `tools/art` from one set of
-  hand-tuned textures, one torchlight model and one palette, so every screen matches.
-* Each piece is then **painted over as pixel art**: about 110 colours on nine hue-shifted
-  material ramps, flat colour clusters, ink outlines and light retro dithering.
-* Pieces exist at every quarter-cell offset, so stepping animates through 4 frames,
-  strafing through 2, and turning pans between the two facings.
+* The 128x128 view is real-time 3D built from tiles: every grid cell is a textured block,
+  with floors, ceilings and the night sky textured too (`Renderer3D.java`).
+* Doors, the bed slab, cell bars, chains, sconces, sigils, shrines, stairs, trees and
+  house fronts are painted onto the wall textures (`tools/art`), full-colour pixel art on
+  nine material ramps. Bars, archways, rising doors, tree canopies and rooftops are see-through.
+* Torchlight slides each pixel down its own colour ramp with a light 2x2 dither, so the
+  3D view keeps the painted look. Monsters, items and props are lit sprites.
+* Movement stays on the grid (step, strafe, 90 degree turns, no free-look); the camera
+  glides between cells and turns smoothly.
 
 ## Controls
 * Pad: turn left / forward / turn right, strafe left / back / strafe right (hold to keep walking).
@@ -38,7 +40,7 @@ grinding wall, weapons, each monster's cries, pickups, shrines). Regenerate with
 
 ## Building
 * APK: GitHub Actions (`.github/workflows/android.yml`) builds `Graveborne-debug`.
-* Art: `python3 tools/art/build_all.py app/src/main/assets` (numpy + Pillow), about 1 minute.
+* Art: `python3 tools/art/bake_tex.py app/src/main/assets` (numpy + Pillow), a few seconds.
 * Floor 1: `python3 tools/level1.py app/src/main/assets/level1.txt`; floors 2-3: `python3 tools/levels_out.py app/src/main/assets`.
 * Desktop screenshots: compile the core plus `tools/desktop/Harness.java` with `javac` and run a script
   (see the header of Harness.java).

@@ -483,7 +483,7 @@ def _bed_slab(alb, drop, seed):
     yy, xx = np.mgrid[0:T, 0:T].astype(np.float32)
     n = value_noise(T, T, 6, seed, 3)
     top0, top1, fr1 = 74 + drop, 84 + drop, 100 + drop
-    x0, x1 = 8, 120
+    x0, x1 = 4, 76
     topm = (yy >= top0) & (yy < top1) & (xx >= x0 + (top1 - yy) * 0.6) & (xx < x1 - (top1 - yy) * 0.6)
     frontm = (yy >= top1) & (yy < fr1) & (xx >= x0) & (xx < x1)
     stone = hexrgb("807a83") * (0.85 + 0.25 * n[..., None])
@@ -494,17 +494,17 @@ def _bed_slab(alb, drop, seed):
     alb[frontm] = (stone * 0.82)[frontm]
     alb[(np.abs(yy - top1) < 1) & (xx >= x0) & (xx < x1)] = hexrgb("cdc6c2")
     alb[(np.abs(yy - fr1 + 1) < 1) & (xx >= x0) & (xx < x1)] = hexrgb("211e26")
-    for jx in (40, 82):
+    for jx in (28, 52):
         alb[(np.abs(xx - jx) < 0.8) & frontm] = hexrgb("2d2933")
     # threadbare blanket and straw
-    bl = topm & (xx > 30) & (xx < 92)
+    bl = topm & (xx > 16) & (xx < 56)
     bn = value_noise(T, T, 3, seed + 4, 2)
     blanket = hexrgb("5c1618") * (0.75 + 0.5 * bn[..., None])
     blanket = np.where((((xx - 30) // 6) % 2 == 0)[..., None], blanket * 0.85, blanket)
     alb[bl] = blanket[bl]
-    hang = (yy >= top1) & (yy < top1 + 9 - (np.abs(xx - 61) > 22) * 4) & (xx > 32) & (xx < 90)
+    hang = (yy >= top1) & (yy < top1 + 9 - (np.abs(xx - 36) > 14) * 4) & (xx > 18) & (xx < 54)
     alb[hang] = (blanket * 0.7)[hang]
-    straw = topm & ((xx < 30) | (xx > 92)) & (bn > 0.45)
+    straw = topm & ((xx < 16) | (xx > 56)) & (bn > 0.45)
     alb[straw] = hexrgb("c98f47") * (0.7 + 0.5 * n[straw][:, None])
     return alb
 
@@ -531,7 +531,7 @@ def bed_wall(stage=0, seed=121):
     alb = _bed_slab(alb, drop, seed)
     if stage >= 2:
         slab = (yy >= 74 + drop) & (yy < 100 + drop)
-        a = np.where(slab & (xx >= 8) & (xx < 120), 1.0, a).astype(np.float32)
+        a = np.where(slab & (xx >= 4) & (xx < 76), 1.0, a).astype(np.float32)
     return alb, emi, a
 
 

@@ -15,7 +15,7 @@ public final class Game {
     public final Gfx g;
     private final Atlas atlas;
     private final Atlas.Loader loader;
-    private final ViewRenderer vr, vr2;
+    private final Renderer3D r3d;
     private final Random rnd = new Random(1993);
     public Audio audio = Audio.NONE;
 
@@ -73,8 +73,7 @@ public final class Game {
         this.H = Math.max(360, h);
         this.g = new Gfx(W, H);
         this.atlas = new Atlas(loader);
-        this.vr = new ViewRenderer(atlas);
-        this.vr2 = new ViewRenderer(atlas);
+        this.r3d = new Renderer3D(loader);
         padY = H - 2 * BTN - BTN_GAP - 8;
         partyY = Math.min(padY - 2 * PANEL_H - 10, 196);
         logY = 146;
@@ -675,51 +674,36 @@ public final class Game {
         }
     }
 
-    private int[] pan = new int[256 * 128];
+    private static final float SETBACK = 0.15f;   // camera stands a little behind the cell centre
 
+    private static float ease(float t) { return t * t * (3 - 2 * t); }
+
+    private static float angOf(int d) { return (float) (d * Math.PI / 2); }
+
+    /** Grid-locked camera: glides between cells and turns in 90 degree steps. */
     private int[] renderViewNow() {
-        float t = Math.min(animT, 0.999f);
+        float t = ease(Math.min(animT, 1f));
+        float x = px + 0.5f, y = py + 0.5f, ang = angOf(dir);
         switch (anim) {
-            case A_FWD: {
-                int sz = Math.min(3, 1 + (int) (t * 3));
-                vr.render(lv, px, py, dir, 0, sz, time);
-                return vr.out.px;
-            }
-            case A_BACK: {
-                int sz = 3 - Math.min(2, (int) (t * 3));
-                vr.render(lv, toX, toY, dir, 0, sz, time);
-                return vr.out.px;
-            }
-            case A_STRAFE: {
-                if (t < 0.5f) vr.render(lv, px, py, dir, 2 * animSide, 0, time);
-                else vr.render(lv, toX, toY, dir, -2 * animSide, 0, time);
-                return vr.out.px;
+            case A_FWD: case A_BACK: case A_STRAFE:
+                x += (toX - px) * t; y += (toY - py) * t;
+                break;
+            case A_TURN: {
+                float a0 = angOf(fromDir);
+                ang = a0 + animSide * (float) (Math.PI / 2) * t;
+                break;
             }
             case A_BUMP: {
-                vr.render(lv, px, py, dir, 0, t < 0.5f ? 1 : 0, time);
-                return vr.out.px;
+                float b = (float) Math.sin(Math.PI * Math.min(animT, 1f)) * 0.07f;
+                x += Level.DX[dir] * b; y += Level.DY[dir] * b;
+                break;
             }
-            case A_TURN: {
-                // the old view slides out while the new one slides in, like the 90s crawlers did
-                vr.render(lv, px, py, fromDir, 0, 0, time);
-                vr2.render(lv, px, py, dir, 0, 0, time);
-                int step = Math.min(3, 1 + (int) (t * 3));
-                int off = step * 32;
-                int[] a = vr.out.px, b = vr2.out.px, o = vr.out.px.clone();
-                for (int y = 0; y < 128; y++) {
-                    for (int x = 0; x < 128; x++) {
-                        int v;
-                        if (animSide > 0) { int sx = x + off; v = sx < 128 ? a[y * 128 + sx] : b[y * 128 + sx - 128]; }
-                        else { int sx = x - off; v = sx >= 0 ? a[y * 128 + sx] : b[y * 128 + sx + 128]; }
-                        o[y * 128 + x] = v;
-                    }
-                }
-                return o;
-            }
-            default:
-                vr.render(lv, px, py, dir, 0, 0, time);
-                return vr.out.px;
+            default: break;
         }
+        x -= (float) Math.sin(ang) * SETBACK;
+        y += (float) Math.cos(ang) * SETBACK;
+        r3d.render(lv, x, y, ang, time, 0);
+        return r3d.out.px;
     }
 
     private void drawMap() {
@@ -850,10 +834,13 @@ public final class Game {
 
     private void drawTitle() {
         // the cell view behind the title
-        vr.render(lv, lv.startX, lv.startY, lv.startDir, 0, 0, time);
+        {
+            float a = angOf(lv.startDir);
+            r3d.render(lv, lv.startX + 0.5f - (float) Math.sin(a) * SETBACK, lv.startY + 0.5f + (float) Math.cos(a) * SETBACK, a, time, 0);
+        }
         int vy = H / 2 - 64 - 10;
         g.fill(VX - 2, vy - 2, 132, 132, Pal.INK);
-        g.copy(vr.out.px, 128, 0, 0, VX, vy, 128, 128);
+        g.copy(r3d.out.px, 128, 0, 0, VX, vy, 128, 128);
         g.shade(VX, vy, 128, 128, 150);
         String t = "GRAVEBORNE";
         int tw = Gfx.width(t) * 2;
